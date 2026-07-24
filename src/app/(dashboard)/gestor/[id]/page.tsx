@@ -140,7 +140,7 @@ export default async function GestorDesligamentoDetalhePage({
               </div>
               <div>
                 <p className="text-white/40 text-xs">Dias trabalhados</p>
-                <p className="text-white/85">{valores.dias_trabalhados}</p>
+                <p className="text-white/85">{valores.dias_trabalhados ?? "—"}</p>
               </div>
               <div>
                 <p className="text-white/40 text-xs">Multa + acordo</p>

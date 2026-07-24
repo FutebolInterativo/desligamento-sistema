@@ -49,6 +49,9 @@ export default async function NovoDesligamentoPage() {
                 <option value="estagio">Estágio</option>
               </Select>
             </Field>
+            <Field label="Salário base" hint="Salário mensal do colaborador">
+              <Input type="number" step="0.01" name="salario_base" min="0" required placeholder="0,00" />
+            </Field>
           </CardBody>
         </Card>
 

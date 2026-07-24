@@ -121,7 +121,7 @@ export function emailSolicitacaoAdvogado(params: {
           ? `
       <ul style="margin-top:4px;">
         <li><strong>Salário base:</strong> ${formatBRL(d.salario_base)}</li>
-        <li><strong>Dias trabalhados no mês:</strong> ${d.dias_trabalhados}</li>
+        <li><strong>Dias trabalhados no mês:</strong> ${d.dias_trabalhados ?? "a confirmar pelo RH"}</li>
         <li><strong>Valor de multa:</strong> ${formatBRL(d.valor_multa)}</li>
         <li><strong>Valor de acordo:</strong> ${formatBRL(d.valor_acordo)}</li>
         <li><strong>Valor total apurado:</strong> ${formatBRL(d.valor_total)}</li>

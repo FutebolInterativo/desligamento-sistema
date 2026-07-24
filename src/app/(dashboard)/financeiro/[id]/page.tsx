@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, Calculator, FileText, AlertTriangle } from "lucide-react";
+import { ArrowLeft, FileText, AlertTriangle } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSignedUrl } from "@/lib/storage";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPipeline } from "@/components/ui/status-pipeline";
 import { StatusBadge, Pill } from "@/components/ui/badge";
-import { Field, Input } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
 import { formatBRL, formatDate, formatDateTime } from "@/lib/utils";
 import type {
   Desligamento,
@@ -20,7 +18,6 @@ import type {
   Pagamento,
   ParcelaPagamento,
 } from "@/lib/types";
-import { salvarValoresAction } from "../actions";
 import { RegistrarPagamentoForm } from "./registrar-pagamento-form";
 
 const TIPO_DOCUMENTO_LABEL: Record<string, string> = {
@@ -141,90 +138,77 @@ export default async function FinanceiroDetalhePage({
         </CardBody>
       </Card>
 
-      {/* Editável: valores */}
+      {/* Leitura: valores (preenchidos pelo gestor + dias trabalhados pelo RH) */}
       <Card className="mb-5">
         <CardHeader>
           <CardTitle>Valores do desligamento</CardTitle>
         </CardHeader>
-        <CardBody>
-          <form action={salvarValoresAction} className="space-y-4">
-            <input type="hidden" name="desligamento_id" value={desligamento.id} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Salário base" hint="Salário mensal do colaborador">
-                <Input
-                  type="number"
-                  step="0.01"
-                  name="salario_base"
-                  required
-                  defaultValue={valores?.salario_base}
-                />
-              </Field>
-              <Field label="Dias trabalhados no mês" hint="Usado para o cálculo proporcional">
-                <Input
-                  type="number"
-                  name="dias_trabalhados"
-                  required
-                  defaultValue={valores?.dias_trabalhados}
-                />
-              </Field>
-              <Field label="Valor de multa" hint="Se houver">
-                <Input
-                  type="number"
-                  step="0.01"
-                  name="valor_multa"
-                  defaultValue={valores?.valor_multa ?? 0}
-                />
-              </Field>
-              <Field label="Valor de acordo" hint="Se houver">
-                <Input
-                  type="number"
-                  step="0.01"
-                  name="valor_acordo"
-                  defaultValue={valores?.valor_acordo ?? 0}
-                />
-              </Field>
-            </div>
-            {valores && (
-              <div className="space-y-1.5 rounded-lg border border-white/10 bg-[var(--midnight)]/40 p-3 text-sm">
-                <p className="mb-1 text-xs font-mono-label text-white/40">Como o valor é calculado</p>
-                <div className="flex items-center justify-between text-white/60">
-                  <span>
-                    Proporcional (salário ÷ 30 × dias trabalhados) — {formatBRL(valores.salario_base)} ÷ 30 ×{" "}
-                    {valores.dias_trabalhados}
-                  </span>
-                  <span className="text-white/85">
-                    {formatBRL(
-                      Math.round((valores.salario_base / 30) * valores.dias_trabalhados * 100) / 100
-                    )}
-                  </span>
+        <CardBody className="text-sm">
+          {valores ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div>
+                  <p className="text-white/40 text-xs">Salário base</p>
+                  <p className="text-white/85">{formatBRL(valores.salario_base)}</p>
                 </div>
-                <div className="flex items-center justify-between text-white/60">
-                  <span>
-                    + Multa
-                    {acordo?.tem_multa && acordo.multa_responsavel && (
-                      <span className="text-white/35">
-                        {" "}
-                        ({acordo.multa_responsavel === "empresa" ? "paga pela FI" : "paga pelo colaborador"})
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-white/85">{formatBRL(valores.valor_multa)}</span>
+                <div>
+                  <p className="text-white/40 text-xs">Dias trabalhados</p>
+                  <p className="text-white/85">{valores.dias_trabalhados ?? "—"}</p>
                 </div>
-                <div className="flex items-center justify-between text-white/60">
-                  <span>+ Acordo</span>
-                  <span className="text-white/85">{formatBRL(valores.valor_acordo)}</span>
+                <div>
+                  <p className="text-white/40 text-xs">Valor de multa</p>
+                  <p className="text-white/85">{formatBRL(valores.valor_multa)}</p>
                 </div>
-                <div className="flex items-center justify-between border-t border-white/[0.06] pt-1.5 text-white/40">
-                  <span>= Valor total apurado</span>
-                  <span className="font-display text-[var(--blue-400)]">{formatBRL(valores.valor_total)}</span>
+                <div>
+                  <p className="text-white/40 text-xs">Valor de acordo</p>
+                  <p className="text-white/85">{formatBRL(valores.valor_acordo)}</p>
                 </div>
               </div>
-            )}
-            <Button type="submit" size="sm">
-              <Calculator size={15} />
-              {valores ? "Atualizar valores" : "Salvar e devolver ao RH"}
-            </Button>
-          </form>
+
+              {valores.dias_trabalhados != null ? (
+                <div className="space-y-1.5 rounded-lg border border-white/10 bg-[var(--midnight)]/40 p-3">
+                  <p className="mb-1 text-xs font-mono-label text-white/40">Como o valor é calculado</p>
+                  <div className="flex items-center justify-between text-white/60">
+                    <span>
+                      Proporcional (salário ÷ 30 × dias trabalhados) — {formatBRL(valores.salario_base)} ÷ 30
+                      × {valores.dias_trabalhados}
+                    </span>
+                    <span className="text-white/85">
+                      {formatBRL(
+                        Math.round((valores.salario_base / 30) * valores.dias_trabalhados * 100) / 100
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-white/60">
+                    <span>
+                      + Multa
+                      {acordo?.tem_multa && acordo.multa_responsavel && (
+                        <span className="text-white/35">
+                          {" "}
+                          ({acordo.multa_responsavel === "empresa" ? "paga pela FI" : "paga pelo colaborador"})
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-white/85">{formatBRL(valores.valor_multa)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-white/60">
+                    <span>+ Acordo</span>
+                    <span className="text-white/85">{formatBRL(valores.valor_acordo)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-white/[0.06] pt-1.5 text-white/40">
+                    <span>= Valor total apurado</span>
+                    <span className="font-display text-[var(--blue-400)]">{formatBRL(valores.valor_total)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-300">
+                  Aguardando o RH informar os dias trabalhados no mês para fechar o valor total.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-white/40">Nenhum valor informado pelo gestor ainda.</p>
+          )}
         </CardBody>
       </Card>
 

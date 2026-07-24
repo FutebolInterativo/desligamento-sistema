@@ -74,10 +74,10 @@ export interface ValoresFinanceiros {
   id: string;
   desligamento_id: string;
   salario_base: number;
-  dias_trabalhados: number;
+  dias_trabalhados: number | null;
   valor_multa: number;
   valor_acordo: number;
-  valor_total: number;
+  valor_total: number | null;
   observacoes: string | null;
   informado_por: string | null;
   created_at: string;

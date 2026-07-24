@@ -136,7 +136,7 @@ export default async function DistratoTokenPage({
                   </p>
                   <p>
                     <span className="text-white/40">Dias trabalhados: </span>
-                    {dados.dias_trabalhados}
+                    {dados.dias_trabalhados ?? "a confirmar pelo RH"}
                   </p>
                   <p>
                     <span className="text-white/40">Valor de multa: </span>

@@ -4,42 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 
-export async function salvarValoresAction(formData: FormData) {
-  const profile = await requireRole(["financeiro", "admin"]);
-  const supabase = await createClient();
-
-  const desligamentoId = String(formData.get("desligamento_id"));
-  const salarioBase = Number(formData.get("salario_base"));
-  const diasTrabalhados = Number(formData.get("dias_trabalhados"));
-  const valorMulta = Number(formData.get("valor_multa") || 0);
-  const valorAcordo = Number(formData.get("valor_acordo") || 0);
-  const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
-
-  const { error } = await supabase.from("valores_financeiros").upsert(
-    {
-      desligamento_id: desligamentoId,
-      salario_base: salarioBase,
-      dias_trabalhados: diasTrabalhados,
-      valor_multa: valorMulta,
-      valor_acordo: valorAcordo,
-      observacoes,
-      informado_por: profile.id,
-    },
-    { onConflict: "desligamento_id" }
-  );
-  if (error) throw new Error(error.message);
-
-  // Devolve para o RH seguir com a solicitação ao advogado
-  await supabase
-    .from("desligamentos")
-    .update({ status: "enviado_rh" })
-    .eq("id", desligamentoId)
-    .eq("status", "dados_financeiros_pendentes");
-
-  revalidatePath(`/financeiro/${desligamentoId}`);
-  revalidatePath("/financeiro");
-}
-
 export async function registrarParcelaAction(
   _prevState: { ok: boolean; message: string } | null,
   formData: FormData
@@ -96,7 +60,7 @@ export async function registrarParcelaAction(
     .filter((p) => p.status === "pago")
     .reduce((acc, p) => acc + Number(p.valor), 0);
 
-  if (valores && totalPago >= Number(valores.valor_total)) {
+  if (valores && valores.valor_total != null && totalPago >= Number(valores.valor_total)) {
     await supabase
       .from("pagamentos")
       .update({ status: "pago", valor_pago: totalPago, data_realizado: dataRealizado })
