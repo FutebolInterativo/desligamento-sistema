@@ -1,0 +1,648 @@
+diff --git a/src/app/(dashboard)/financeiro/[id]/page.tsx b/src/app/(dashboard)/financeiro/[id]/page.tsx
+index 1b6b9bd..d2256c3 100644
+--- a/src/app/(dashboard)/financeiro/[id]/page.tsx
++++ b/src/app/(dashboard)/financeiro/[id]/page.tsx
+@@ -19,6 +19,7 @@ import type {
+   DocumentoRow,
+   Procedimentos,
+   Pagamento,
++  ParcelaPagamento,
+ } from "@/lib/types";
+ import { salvarValoresAction } from "../actions";
+ import { RegistrarPagamentoForm } from "./registrar-pagamento-form";
+@@ -43,7 +44,7 @@ export default async function FinanceiroDetalhePage({
+     .select(
+       `*, colaborador:colaboradores(*), acordo:acordos(*), valores:valores_financeiros(*),
+        solicitacoes_advogado(*), solicitacoes_nf(*), pagamento:pagamentos(*), documentos(*),
+-       procedimentos(*)`
++       procedimentos(*), parcelas_pagamento(*)`
+     )
+     .eq("id", id)
+     .single();
+@@ -59,6 +60,7 @@ export default async function FinanceiroDetalhePage({
+     pagamento: Pagamento | null;
+     documentos: DocumentoRow[];
+     procedimentos: Procedimentos | null;
++    parcelas_pagamento: ParcelaPagamento[];
+   };
+ 
+   const acordo = desligamento.acordo?.[0];
+@@ -122,7 +124,9 @@ export default async function FinanceiroDetalhePage({
+           )}
+           <div className="flex gap-2">
+             <Pill tone={acordo?.tem_multa ? "warn" : "neutral"}>
+-              {acordo?.tem_multa ? "Com multa" : "Sem multa"}
++              {acordo?.tem_multa
++                ? `Com multa · ${acordo.multa_responsavel === "empresa" ? "FI paga" : "colaborador paga"}`
++                : "Sem multa"}
+             </Pill>
+             <Pill tone={acordo?.tem_acordo ? "accent" : "neutral"}>
+               {acordo?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
+@@ -281,6 +285,10 @@ export default async function FinanceiroDetalhePage({
+                 desligamentoId={desligamento.id}
+                 distratoAprovado={Boolean(distratoAprovado)}
+                 nfPendente={pagamento.nf_necessaria && !pagamento.nf_emitida}
++                parcelas={(desligamento.parcelas_pagamento ?? []).sort(
++                  (a, b) => a.numero_parcela - b.numero_parcela
++                )}
++                valorTotal={valores?.valor_total ?? null}
+               />
+             ) : (
+               <p className="text-sm text-emerald-300">
+diff --git a/src/app/(dashboard)/financeiro/[id]/registrar-pagamento-form.tsx b/src/app/(dashboard)/financeiro/[id]/registrar-pagamento-form.tsx
+index 6739398..5a606f7 100644
+--- a/src/app/(dashboard)/financeiro/[id]/registrar-pagamento-form.tsx
++++ b/src/app/(dashboard)/financeiro/[id]/registrar-pagamento-form.tsx
+@@ -1,10 +1,12 @@
+ "use client";
+ 
+-import { useActionState } from "react";
++import { useActionState, useRef, useEffect } from "react";
+ import { CircleDollarSign, CheckCircle2 } from "lucide-react";
+-import { registrarPagamentoAction } from "../actions";
++import { registrarParcelaAction } from "../actions";
+ import { Field, Input } from "@/components/ui/form";
+ import { Button } from "@/components/ui/button";
++import { formatBRL, formatDate } from "@/lib/utils";
++import type { ParcelaPagamento } from "@/lib/types";
+ 
+ type Result = { ok: boolean; message: string } | null;
+ 
+@@ -12,55 +14,99 @@ export function RegistrarPagamentoForm({
+   desligamentoId,
+   distratoAprovado,
+   nfPendente,
++  parcelas,
++  valorTotal,
+ }: {
+   desligamentoId: string;
+   distratoAprovado: boolean;
+   nfPendente: boolean;
++  parcelas: ParcelaPagamento[];
++  valorTotal: number | null;
+ }) {
+   const [result, formAction, pending] = useActionState<Result, FormData>(
+-    registrarPagamentoAction,
++    registrarParcelaAction,
+     null
+   );
++  const formRef = useRef<HTMLFormElement>(null);
+ 
+-  if (result?.ok) {
+-    return (
+-      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-2.5 text-sm text-emerald-300">
+-        <CheckCircle2 size={15} />
+-        {result.message}
+-      </div>
+-    );
+-  }
++  useEffect(() => {
++    if (result?.ok) formRef.current?.reset();
++  }, [result]);
++
++  const totalPago = parcelas
++    .filter((p) => p.status === "pago")
++    .reduce((acc, p) => acc + Number(p.valor), 0);
++  const restante = valorTotal != null ? Math.max(valorTotal - totalPago, 0) : null;
++  const quitado = valorTotal != null && totalPago >= valorTotal;
+ 
+   return (
+-    <form action={formAction} className="space-y-3 border-t border-white/[0.06] pt-4">
+-      <input type="hidden" name="desligamento_id" value={desligamentoId} />
+-      {result && !result.ok && (
+-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-300">
+-          {result.message}
+-        </p>
+-      )}
+-      <div className="grid gap-4 sm:grid-cols-2">
+-        <Field label="Valor pago">
+-          <Input type="number" step="0.01" name="valor_pago" required />
+-        </Field>
+-        <Field label="Data do pagamento">
+-          <Input type="date" name="data_realizado" required />
+-        </Field>
+-      </div>
+-      {!distratoAprovado && (
+-        <p className="text-xs text-amber-300">
+-          O distrato ainda não está assinado/aprovado — o pagamento será bloqueado pelo sistema até isso ocorrer.
+-        </p>
++    <div className="space-y-4 border-t border-white/[0.06] pt-4">
++      {parcelas.length > 0 && (
++        <div className="space-y-2">
++          <p className="text-xs font-mono-label text-white/40">Parcelas registradas</p>
++          {parcelas.map((p) => (
++            <div
++              key={p.id}
++              className="flex items-center justify-between rounded-lg border border-white/10 bg-[var(--midnight)]/40 px-3 py-2 text-sm"
++            >
++              <span className="text-white/70">
++                Parcela {p.numero_parcela} · {formatDate(p.data_realizado)}
++              </span>
++              <span className="font-display text-[var(--ink-000)]">{formatBRL(p.valor)}</span>
++            </div>
++          ))}
++          <div className="flex items-center justify-between text-sm pt-1">
++            <span className="text-white/40">Total pago</span>
++            <span className="text-white/85">{formatBRL(totalPago)}</span>
++          </div>
++          {restante != null && (
++            <div className="flex items-center justify-between text-sm">
++              <span className="text-white/40">Restante</span>
++              <span className={restante > 0 ? "text-amber-300" : "text-emerald-300"}>
++                {formatBRL(restante)}
++              </span>
++            </div>
++          )}
++        </div>
+       )}
+-      {nfPendente && (
+-        <p className="text-xs text-amber-300">
+-          Este caso exige NF — aguarde o colaborador enviar antes de registrar o pagamento.
+-        </p>
++
++      {quitado ? (
++        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-2.5 text-sm text-emerald-300">
++          <CheckCircle2 size={15} />
++          Valor total quitado — pagamento concluído.
++        </div>
++      ) : (
++        <form ref={formRef} action={formAction} className="space-y-3">
++          <input type="hidden" name="desligamento_id" value={desligamentoId} />
++          {result && !result.ok && (
++            <p className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-300">
++              {result.message}
++            </p>
++          )}
++          <div className="grid gap-4 sm:grid-cols-2">
++            <Field label="Valor da parcela" hint="Pode registrar mais de uma parcela, se for parcelado">
++              <Input type="number" step="0.01" name="valor" required />
++            </Field>
++            <Field label="Data do pagamento">
++              <Input type="date" name="data_realizado" required />
++            </Field>
++          </div>
++          {!distratoAprovado && (
++            <p className="text-xs text-amber-300">
++              O distrato ainda não está assinado/aprovado — o pagamento será bloqueado pelo sistema até isso ocorrer.
++            </p>
++          )}
++          {nfPendente && (
++            <p className="text-xs text-amber-300">
++              Este caso exige NF — aguarde o colaborador enviar antes de registrar o pagamento.
++            </p>
++          )}
++          <Button type="submit" size="sm" disabled={pending}>
++            <CircleDollarSign size={15} />
++            {pending ? "Registrando..." : "Registrar parcela"}
++          </Button>
++        </form>
+       )}
+-      <Button type="submit" size="sm" disabled={pending}>
+-        <CircleDollarSign size={15} />
+-        {pending ? "Registrando..." : "Registrar pagamento"}
+-      </Button>
+-    </form>
++    </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/app/(dashboard)/financeiro/actions.ts b/src/app/(dashboard)/financeiro/actions.ts
+index ed595c5..1c31396 100644
+--- a/src/app/(dashboard)/financeiro/actions.ts
++++ b/src/app/(dashboard)/financeiro/actions.ts
+@@ -56,7 +56,7 @@ export async function marcarNfEmitidaAction(formData: FormData) {
+   revalidatePath(`/financeiro/${desligamentoId}`);
+ }
+ 
+-export async function registrarPagamentoAction(
++export async function registrarParcelaAction(
+   _prevState: { ok: boolean; message: string } | null,
+   formData: FormData
+ ) {
+@@ -64,31 +64,66 @@ export async function registrarPagamentoAction(
+   const supabase = await createClient();
+ 
+   const desligamentoId = String(formData.get("desligamento_id"));
+-  const valorPago = Number(formData.get("valor_pago"));
++  const valor = Number(formData.get("valor"));
+   const dataRealizado = String(formData.get("data_realizado"));
+ 
+-  // O trigger check_gate_pagamento bloqueia isto se o distrato não estiver
+-  // assinado/aprovado, ou se faltar NF quando necessária.
+-  const { error } = await supabase
+-    .from("pagamentos")
+-    .update({ status: "pago", valor_pago: valorPago, data_realizado: dataRealizado })
++  if (!valor || valor <= 0 || !dataRealizado) {
++    return { ok: false as const, message: "Informe o valor e a data da parcela." };
++  }
++
++  const { count } = await supabase
++    .from("parcelas_pagamento")
++    .select("id", { count: "exact", head: true })
+     .eq("desligamento_id", desligamentoId);
+ 
++  // O trigger check_gate_parcela_pagamento bloqueia isto se o distrato não
++  // estiver assinado/aprovado, ou se faltar NF quando necessária.
++  const { error } = await supabase.from("parcelas_pagamento").insert({
++    desligamento_id: desligamentoId,
++    numero_parcela: (count ?? 0) + 1,
++    valor,
++    data_realizado: dataRealizado,
++    status: "pago",
++  });
++
+   if (error) {
+     return {
+       ok: false as const,
+       message: error.message.includes("Pagamento bloqueado")
+         ? error.message
+-        : `Não foi possível registrar o pagamento: ${error.message}`,
++        : `Não foi possível registrar a parcela: ${error.message}`,
+     };
+   }
+ 
+-  await supabase.from("desligamentos").update({ status: "pago" }).eq("id", desligamentoId);
++  // Se a soma das parcelas pagas já cobre o valor total apurado, conclui o
++  // pagamento e avança o status do desligamento.
++  const { data: valores } = await supabase
++    .from("valores_financeiros")
++    .select("valor_total")
++    .eq("desligamento_id", desligamentoId)
++    .single();
++
++  const { data: parcelas } = await supabase
++    .from("parcelas_pagamento")
++    .select("valor, status")
++    .eq("desligamento_id", desligamentoId);
++
++  const totalPago = (parcelas ?? [])
++    .filter((p) => p.status === "pago")
++    .reduce((acc, p) => acc + Number(p.valor), 0);
++
++  if (valores && totalPago >= Number(valores.valor_total)) {
++    await supabase
++      .from("pagamentos")
++      .update({ status: "pago", valor_pago: totalPago, data_realizado: dataRealizado })
++      .eq("desligamento_id", desligamentoId);
++    await supabase.from("desligamentos").update({ status: "pago" }).eq("id", desligamentoId);
++  }
+ 
+   revalidatePath(`/financeiro/${desligamentoId}`);
+   revalidatePath("/financeiro");
+   revalidatePath(`/rh/${desligamentoId}`);
+   revalidatePath("/rh");
+ 
+-  return { ok: true as const, message: "Pagamento registrado com sucesso." };
++  return { ok: true as const, message: "Parcela registrada com sucesso." };
+ }
+\ No newline at end of file
+diff --git a/src/app/(dashboard)/rh/[id]/page.tsx b/src/app/(dashboard)/rh/[id]/page.tsx
+index 8364334..cd0b6ff 100644
+--- a/src/app/(dashboard)/rh/[id]/page.tsx
++++ b/src/app/(dashboard)/rh/[id]/page.tsx
+@@ -1,5 +1,5 @@
+ import Link from "next/link";
+-import { ArrowLeft, Send, FileCheck2, Upload, ClipboardCheck, Ban, FileText } from "lucide-react";
++import { ArrowLeft, Send, FileCheck2, Upload, ClipboardCheck, Ban, FileText, IdCard, Mail } from "lucide-react";
+ import { requireRole } from "@/lib/auth";
+ import { createClient } from "@/lib/supabase/server";
+ import { getSignedUrl } from "@/lib/storage";
+@@ -28,6 +28,8 @@ import {
+   atualizarProcedimentosAction,
+   gerarLinkNfAction,
+   cancelarDesligamentoAction,
++  atualizarCpfAction,
++  enviarDistratoAdvogadoAction,
+ } from "../actions";
+ 
+ export default async function DesligamentoDetalhePage({
+@@ -107,6 +109,32 @@ export default async function DesligamentoDetalhePage({
+         </CardBody>
+       </Card>
+ 
++      {/* Dados do colaborador */}
++      <Card className="mb-5">
++        <CardHeader>
++          <CardTitle>Dados do colaborador</CardTitle>
++        </CardHeader>
++        <CardBody>
++          <form action={atualizarCpfAction} className="flex items-end gap-3">
++            <input type="hidden" name="colaborador_id" value={desligamento.colaborador_id} />
++            <input type="hidden" name="desligamento_id" value={desligamento.id} />
++            <div className="max-w-xs flex-1">
++              <Field label="CPF" hint="Necessário para a elaboração do distrato">
++                <Input
++                  name="cpf"
++                  defaultValue={desligamento.colaborador?.cpf ?? ""}
++                  placeholder="000.000.000-00"
++                />
++              </Field>
++            </div>
++            <Button type="submit" size="sm" variant="secondary">
++              <IdCard size={15} />
++              Salvar CPF
++            </Button>
++          </form>
++        </CardBody>
++      </Card>
++
+       {/* Acordo */}
+       <Card className="mb-5">
+         <CardHeader>
+@@ -121,7 +149,9 @@ export default async function DesligamentoDetalhePage({
+           )}
+           <div className="flex gap-2">
+             <Pill tone={acordo?.tem_multa ? "warn" : "neutral"}>
+-              {acordo?.tem_multa ? "Com multa" : "Sem multa"}
++              {acordo?.tem_multa
++                ? `Com multa · ${acordo.multa_responsavel === "empresa" ? "FI paga" : "colaborador paga"}`
++                : "Sem multa"}
+             </Pill>
+             <Pill tone={acordo?.tem_acordo ? "accent" : "neutral"}>
+               {acordo?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
+@@ -291,18 +321,39 @@ export default async function DesligamentoDetalhePage({
+ 
+       {distratoAssinado && (
+         <Card className="mb-5">
+-          <CardBody className="flex items-center justify-between text-sm text-white/60">
+-            <span>Distrato assinado anexado em {formatDateTime(distratoAssinado.uploaded_at)}.</span>
+-            {distratoAssinadoUrl && (
+-              <a
+-                href={distratoAssinadoUrl}
+-                target="_blank"
+-                rel="noopener noreferrer"
+-                className="inline-flex items-center gap-1.5 text-[var(--blue-400)] hover:underline"
+-              >
+-                <FileText size={14} />
+-                Ver arquivo
+-              </a>
++          <CardBody className="space-y-3 text-sm text-white/60">
++            <div className="flex items-center justify-between">
++              <span>Distrato assinado anexado em {formatDateTime(distratoAssinado.uploaded_at)}.</span>
++              {distratoAssinadoUrl && (
++                <a
++                  href={distratoAssinadoUrl}
++                  target="_blank"
++                  rel="noopener noreferrer"
++                  className="inline-flex items-center gap-1.5 text-[var(--blue-400)] hover:underline"
++                >
++                  <FileText size={14} />
++                  Ver arquivo
++                </a>
++              )}
++            </div>
++            {solicitacao && (
++              <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
++                {solicitacao.distrato_assinado_enviado_em ? (
++                  <span className="text-xs text-white/40">
++                    Enviado ao advogado em {formatDateTime(solicitacao.distrato_assinado_enviado_em)}.
++                  </span>
++                ) : (
++                  <span className="text-xs text-white/40">Ainda não enviado ao advogado.</span>
++                )}
++                <form action={enviarDistratoAdvogadoAction}>
++                  <input type="hidden" name="desligamento_id" value={desligamento.id} />
++                  <input type="hidden" name="documento_id" value={distratoAssinado.id} />
++                  <Button type="submit" size="sm" variant="secondary">
++                    <Mail size={14} />
++                    {solicitacao.distrato_assinado_enviado_em ? "Reenviar ao advogado" : "Enviar ao advogado"}
++                  </Button>
++                </form>
++              </div>
+             )}
+           </CardBody>
+         </Card>
+diff --git a/src/app/(dashboard)/rh/actions.ts b/src/app/(dashboard)/rh/actions.ts
+index 0e56399..b72aab7 100644
+--- a/src/app/(dashboard)/rh/actions.ts
++++ b/src/app/(dashboard)/rh/actions.ts
+@@ -6,7 +6,87 @@ import { createClient } from "@/lib/supabase/server";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { requireRole } from "@/lib/auth";
+ import { addBusinessDays } from "@/lib/utils";
+-import { sendEmail, emailSolicitacaoAdvogado } from "@/lib/email";
++import { sendEmail, emailSolicitacaoAdvogado, emailDistratoAssinado } from "@/lib/email";
++
++export async function atualizarCpfAction(formData: FormData) {
++  await requireRole(["rh", "admin"]);
++  const supabase = await createClient();
++
++  const colaboradorId = String(formData.get("colaborador_id"));
++  const desligamentoId = String(formData.get("desligamento_id"));
++  const cpf = String(formData.get("cpf") ?? "").trim() || null;
++
++  const { error } = await supabase
++    .from("colaboradores")
++    .update({ cpf })
++    .eq("id", colaboradorId);
++  if (error) throw new Error(error.message);
++
++  revalidatePath(`/rh/${desligamentoId}`);
++}
++
++export async function enviarDistratoAdvogadoAction(formData: FormData) {
++  await requireRole(["rh", "admin"]);
++  const supabase = await createClient();
++  const admin = createAdminClient();
++
++  const desligamentoId = String(formData.get("desligamento_id"));
++  const documentoId = String(formData.get("documento_id"));
++
++  const { data: documento } = await supabase
++    .from("documentos")
++    .select("*")
++    .eq("id", documentoId)
++    .single();
++  if (!documento) throw new Error("Documento não encontrado.");
++
++  const { data: solicitacao } = await supabase
++    .from("solicitacoes_advogado")
++    .select("*")
++    .eq("desligamento_id", desligamentoId)
++    .order("solicitado_em", { ascending: false })
++    .limit(1)
++    .maybeSingle();
++  if (!solicitacao) {
++    throw new Error("Não há solicitação ao advogado registrada para este desligamento.");
++  }
++
++  const { data: desligamento } = await supabase
++    .from("desligamentos")
++    .select("*, colaborador:colaboradores(*)")
++    .eq("id", desligamentoId)
++    .single();
++  if (!desligamento) throw new Error("Desligamento não encontrado.");
++
++  const { data: fileBlob, error: downloadError } = await admin.storage
++    .from("distratos")
++    .download(documento.arquivo_path);
++  if (downloadError || !fileBlob) {
++    throw new Error(downloadError?.message ?? "Não foi possível baixar o arquivo do distrato.");
++  }
++
++  const buffer = Buffer.from(await fileBlob.arrayBuffer());
++
++  await sendEmail({
++    to: solicitacao.advogado_email,
++    subject: `Distrato assinado — ${desligamento.colaborador?.nome ?? "colaborador"}`,
++    html: emailDistratoAssinado({
++      advogadoNome: solicitacao.advogado_nome,
++      colaboradorNome: desligamento.colaborador?.nome ?? "colaborador",
++    }),
++    attachments: [
++      { filename: "distrato-assinado.pdf", content: buffer.toString("base64") },
++    ],
++  });
++
++  const { error } = await supabase
++    .from("solicitacoes_advogado")
++    .update({ distrato_assinado_enviado_em: new Date().toISOString() })
++    .eq("id", solicitacao.id);
++  if (error) throw new Error(error.message);
++
++  revalidatePath(`/rh/${desligamentoId}`);
++}
+ 
+ export async function encaminharFinanceiroAction(desligamentoId: string) {
+   await requireRole(["rh", "admin"]);
+diff --git a/src/lib/email.ts b/src/lib/email.ts
+index 1c29826..15671d2 100644
+--- a/src/lib/email.ts
++++ b/src/lib/email.ts
+@@ -3,7 +3,12 @@
+ // Se RESEND_API_KEY não estiver configurada, a função apenas loga no
+ // console em vez de falhar — útil em desenvolvimento local.
+ 
+-export async function sendEmail(params: { to: string; subject: string; html: string }) {
++export async function sendEmail(params: {
++  to: string;
++  subject: string;
++  html: string;
++  attachments?: { filename: string; content: string }[];
++}) {
+   const apiKey = process.env.RESEND_API_KEY;
+   const from = process.env.EMAIL_FROM ?? "distrato@empresa.com";
+ 
+@@ -25,6 +30,7 @@ export async function sendEmail(params: { to: string; subject: string; html: str
+       to: params.to,
+       subject: params.subject,
+       html: params.html,
++      ...(params.attachments ? { attachments: params.attachments } : {}),
+     }),
+   });
+ 
+@@ -67,3 +73,19 @@ export function emailSolicitacaoAdvogado(params: {
+     </div>
+   `;
+ }
++
++export function emailDistratoAssinado(params: {
++  advogadoNome: string;
++  colaboradorNome: string;
++}) {
++  return `
++    <div style="font-family: Arial, sans-serif; color: #04133A; max-width: 560px;">
++      <h2 style="color:#0075ED;">Distrato assinado</h2>
++      <p>Olá, ${params.advogadoNome}.</p>
++      <p>
++        Segue em anexo o distrato de desligamento de <strong>${params.colaboradorNome}</strong>
++        assinado por todas as partes, para conhecimento e arquivo.
++      </p>
++    </div>
++  `;
++}
+diff --git a/src/lib/types.ts b/src/lib/types.ts
+index 6d08584..2d52668 100644
+--- a/src/lib/types.ts
++++ b/src/lib/types.ts
+@@ -142,6 +142,18 @@ export interface Pagamento {
+   status: "pendente" | "liberado" | "pago";
+ }
+ 
++export interface ParcelaPagamento {
++  id: string;
++  desligamento_id: string;
++  numero_parcela: number;
++  valor: number;
++  data_prevista: string | null;
++  data_realizado: string | null;
++  status: "pendente" | "liberado" | "pago";
++  registrado_por: string | null;
++  created_at: string;
++}
++
+ export interface HistoricoStatus {
+   id: string;
+   desligamento_id: string;
+diff --git a/supabase/migrations/20260724010000_parcelas_pagamento.sql b/supabase/migrations/20260724010000_parcelas_pagamento.sql
+new file mode 100644
+index 0000000..d11c6e9
+--- /dev/null
++++ b/supabase/migrations/20260724010000_parcelas_pagamento.sql
+@@ -0,0 +1,65 @@
++-- =============================================================================
++-- Permite registrar o pagamento em mais de uma parcela (parcelado), mantendo
++-- o mesmo gate de segurança já existente em `pagamentos` (distrato assinado
++-- + NF, quando necessária).
++-- =============================================================================
++
++create table if not exists parcelas_pagamento (
++  id uuid primary key default gen_random_uuid(),
++  desligamento_id uuid not null references desligamentos(id) on delete cascade,
++  numero_parcela int not null default 1,
++  valor numeric(12,2) not null,
++  data_prevista date,
++  data_realizado date,
++  status status_pagamento not null default 'pendente',
++  registrado_por uuid references profiles(id),
++  created_at timestamptz not null default now()
++);
++
++alter table parcelas_pagamento enable row level security;
++
++-- mesma leitura ampliada usada em `pagamentos`
++create policy "parcelas_pagamento_select" on parcelas_pagamento for select using (
++  auth_role() in ('rh', 'admin', 'financeiro')
++  or exists (select 1 from desligamentos d where d.id = desligamento_id and d.gestor_id = auth.uid())
++);
++
++create policy "parcelas_pagamento_write" on parcelas_pagamento for all using (
++  auth_role() in ('financeiro', 'rh', 'admin')
++) with check (
++  auth_role() in ('financeiro', 'rh', 'admin')
++);
++
++-- Gate: mesma regra do `check_gate_pagamento`, mas consultando nf_necessaria/
++-- nf_emitida na linha correspondente de `pagamentos` (a parcela em si não
++-- carrega esses campos).
++create or replace function check_gate_parcela_pagamento()
++returns trigger language plpgsql as $$
++declare
++  distrato_ok boolean;
++  pg pagamentos%rowtype;
++begin
++  if new.status in ('liberado', 'pago') then
++    select exists (
++      select 1 from documentos
++      where desligamento_id = new.desligamento_id
++        and tipo = 'distrato_assinado'
++        and status = 'aprovado'
++    ) into distrato_ok;
++
++    if not distrato_ok then
++      raise exception 'Pagamento bloqueado: distrato ainda não está assinado e aprovado.';
++    end if;
++
++    select * into pg from pagamentos where desligamento_id = new.desligamento_id;
++    if found and pg.nf_necessaria and not pg.nf_emitida then
++      raise exception 'Pagamento bloqueado: nota fiscal ainda não foi emitida.';
++    end if;
++  end if;
++  return new;
++end;
++$$;
++
++create trigger trg_check_gate_parcela_pagamento
++before insert or update on parcelas_pagamento
++for each row execute function check_gate_parcela_pagamento();

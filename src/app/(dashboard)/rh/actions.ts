@@ -6,7 +6,87 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { addBusinessDays } from "@/lib/utils";
-import { sendEmail, emailSolicitacaoAdvogado } from "@/lib/email";
+import { sendEmail, emailSolicitacaoAdvogado, emailDistratoAssinado } from "@/lib/email";
+
+export async function atualizarCpfAction(formData: FormData) {
+  await requireRole(["rh", "admin"]);
+  const supabase = await createClient();
+
+  const colaboradorId = String(formData.get("colaborador_id"));
+  const desligamentoId = String(formData.get("desligamento_id"));
+  const cpf = String(formData.get("cpf") ?? "").trim() || null;
+
+  const { error } = await supabase
+    .from("colaboradores")
+    .update({ cpf })
+    .eq("id", colaboradorId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/rh/${desligamentoId}`);
+}
+
+export async function enviarDistratoAdvogadoAction(formData: FormData) {
+  await requireRole(["rh", "admin"]);
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  const desligamentoId = String(formData.get("desligamento_id"));
+  const documentoId = String(formData.get("documento_id"));
+
+  const { data: documento } = await supabase
+    .from("documentos")
+    .select("*")
+    .eq("id", documentoId)
+    .single();
+  if (!documento) throw new Error("Documento não encontrado.");
+
+  const { data: solicitacao } = await supabase
+    .from("solicitacoes_advogado")
+    .select("*")
+    .eq("desligamento_id", desligamentoId)
+    .order("solicitado_em", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!solicitacao) {
+    throw new Error("Não há solicitação ao advogado registrada para este desligamento.");
+  }
+
+  const { data: desligamento } = await supabase
+    .from("desligamentos")
+    .select("*, colaborador:colaboradores(*)")
+    .eq("id", desligamentoId)
+    .single();
+  if (!desligamento) throw new Error("Desligamento não encontrado.");
+
+  const { data: fileBlob, error: downloadError } = await admin.storage
+    .from("distratos")
+    .download(documento.arquivo_path);
+  if (downloadError || !fileBlob) {
+    throw new Error(downloadError?.message ?? "Não foi possível baixar o arquivo do distrato.");
+  }
+
+  const buffer = Buffer.from(await fileBlob.arrayBuffer());
+
+  await sendEmail({
+    to: solicitacao.advogado_email,
+    subject: `Distrato assinado — ${desligamento.colaborador?.nome ?? "colaborador"}`,
+    html: emailDistratoAssinado({
+      advogadoNome: solicitacao.advogado_nome,
+      colaboradorNome: desligamento.colaborador?.nome ?? "colaborador",
+    }),
+    attachments: [
+      { filename: "distrato-assinado.pdf", content: buffer.toString("base64") },
+    ],
+  });
+
+  const { error } = await supabase
+    .from("solicitacoes_advogado")
+    .update({ distrato_assinado_enviado_em: new Date().toISOString() })
+    .eq("id", solicitacao.id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/rh/${desligamentoId}`);
+}
 
 export async function encaminharFinanceiroAction(desligamentoId: string) {
   await requireRole(["rh", "admin"]);

@@ -36,7 +36,7 @@ export function Sidebar({ profile }: { profile: Profile }) {
   const items = NAV[profile.role];
 
   return (
-    <aside className="flex h-screen w-64 flex-none flex-col border-r border-white/[0.06] bg-[var(--navy-900)]/70">
+    <aside className="sticky top-0 flex h-screen w-64 flex-none flex-col self-start border-r border-white/[0.06] bg-[var(--navy-900)]/70">
       <div className="flex items-center gap-2.5 px-5 py-6">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--blue-600)] shadow-[0_0_20px_rgba(0,117,237,0.5)]">
           <Scale size={16} className="text-white" />

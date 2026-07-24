@@ -19,6 +19,7 @@ import type {
   DocumentoRow,
   Procedimentos,
   Pagamento,
+  ParcelaPagamento,
 } from "@/lib/types";
 import { salvarValoresAction } from "../actions";
 import { RegistrarPagamentoForm } from "./registrar-pagamento-form";
@@ -43,7 +44,7 @@ export default async function FinanceiroDetalhePage({
     .select(
       `*, colaborador:colaboradores(*), acordo:acordos(*), valores:valores_financeiros(*),
        solicitacoes_advogado(*), solicitacoes_nf(*), pagamento:pagamentos(*), documentos(*),
-       procedimentos(*)`
+       procedimentos(*), parcelas_pagamento(*)`
     )
     .eq("id", id)
     .single();
@@ -59,6 +60,7 @@ export default async function FinanceiroDetalhePage({
     pagamento: Pagamento | null;
     documentos: DocumentoRow[];
     procedimentos: Procedimentos | null;
+    parcelas_pagamento: ParcelaPagamento[];
   };
 
   const acordo = desligamento.acordo?.[0];
@@ -122,7 +124,9 @@ export default async function FinanceiroDetalhePage({
           )}
           <div className="flex gap-2">
             <Pill tone={acordo?.tem_multa ? "warn" : "neutral"}>
-              {acordo?.tem_multa ? "Com multa" : "Sem multa"}
+              {acordo?.tem_multa
+                ? `Com multa · ${acordo.multa_responsavel === "empresa" ? "FI paga" : "colaborador paga"}`
+                : "Sem multa"}
             </Pill>
             <Pill tone={acordo?.tem_acordo ? "accent" : "neutral"}>
               {acordo?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
@@ -281,6 +285,10 @@ export default async function FinanceiroDetalhePage({
                 desligamentoId={desligamento.id}
                 distratoAprovado={Boolean(distratoAprovado)}
                 nfPendente={pagamento.nf_necessaria && !pagamento.nf_emitida}
+                parcelas={(desligamento.parcelas_pagamento ?? []).sort(
+                  (a, b) => a.numero_parcela - b.numero_parcela
+                )}
+                valorTotal={valores?.valor_total ?? null}
               />
             ) : (
               <p className="text-sm text-emerald-300">

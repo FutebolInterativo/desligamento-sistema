@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { registrarDesligamentoAction } from "../actions";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Input, Textarea, Checkbox } from "@/components/ui/form";
+import { Field, Input, Textarea, Checkbox, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 
 export default async function NovoDesligamentoPage() {
@@ -38,6 +38,16 @@ export default async function NovoDesligamentoPage() {
             <Field label="Cargo">
               <Input name="cargo" placeholder="Ex.: Analista de Marketing" />
             </Field>
+            <Field
+              label="Tipo de vínculo"
+              hint="Define se o colaborador precisa emitir nota fiscal"
+            >
+              <Select name="tipo_vinculo" defaultValue="clt" required>
+                <option value="clt">CLT</option>
+                <option value="pj">PJ</option>
+                <option value="estagio">Estágio</option>
+              </Select>
+            </Field>
           </CardBody>
         </Card>
 
@@ -69,6 +79,16 @@ export default async function NovoDesligamentoPage() {
               <Checkbox name="tem_multa" label="Há multa envolvida" />
               <Checkbox name="tem_acordo" label="Há acordo específico" />
             </div>
+            <Field
+              label="Quem paga a multa"
+              hint="Preencha somente se houver multa envolvida"
+            >
+              <Select name="multa_responsavel" defaultValue="">
+                <option value="">Não se aplica</option>
+                <option value="colaborador">Colaborador paga a multa</option>
+                <option value="empresa">FI paga a multa</option>
+              </Select>
+            </Field>
             <Field label="Descrição das condições" hint="O que foi acordado entre gestor e colaborador">
               <Textarea
                 name="condicoes"

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Send, FileCheck2, Upload, ClipboardCheck, Ban, FileText } from "lucide-react";
+import { ArrowLeft, Send, FileCheck2, Upload, ClipboardCheck, Ban, FileText, IdCard, Mail } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSignedUrl } from "@/lib/storage";
@@ -28,6 +28,8 @@ import {
   atualizarProcedimentosAction,
   gerarLinkNfAction,
   cancelarDesligamentoAction,
+  atualizarCpfAction,
+  enviarDistratoAdvogadoAction,
 } from "../actions";
 
 export default async function DesligamentoDetalhePage({
@@ -107,6 +109,32 @@ export default async function DesligamentoDetalhePage({
         </CardBody>
       </Card>
 
+      {/* Dados do colaborador */}
+      <Card className="mb-5">
+        <CardHeader>
+          <CardTitle>Dados do colaborador</CardTitle>
+        </CardHeader>
+        <CardBody>
+          <form action={atualizarCpfAction} className="flex items-end gap-3">
+            <input type="hidden" name="colaborador_id" value={desligamento.colaborador_id} />
+            <input type="hidden" name="desligamento_id" value={desligamento.id} />
+            <div className="max-w-xs flex-1">
+              <Field label="CPF" hint="Necessário para a elaboração do distrato">
+                <Input
+                  name="cpf"
+                  defaultValue={desligamento.colaborador?.cpf ?? ""}
+                  placeholder="000.000.000-00"
+                />
+              </Field>
+            </div>
+            <Button type="submit" size="sm" variant="secondary">
+              <IdCard size={15} />
+              Salvar CPF
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
+
       {/* Acordo */}
       <Card className="mb-5">
         <CardHeader>
@@ -121,7 +149,9 @@ export default async function DesligamentoDetalhePage({
           )}
           <div className="flex gap-2">
             <Pill tone={acordo?.tem_multa ? "warn" : "neutral"}>
-              {acordo?.tem_multa ? "Com multa" : "Sem multa"}
+              {acordo?.tem_multa
+                ? `Com multa · ${acordo.multa_responsavel === "empresa" ? "FI paga" : "colaborador paga"}`
+                : "Sem multa"}
             </Pill>
             <Pill tone={acordo?.tem_acordo ? "accent" : "neutral"}>
               {acordo?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
@@ -291,18 +321,39 @@ export default async function DesligamentoDetalhePage({
 
       {distratoAssinado && (
         <Card className="mb-5">
-          <CardBody className="flex items-center justify-between text-sm text-white/60">
-            <span>Distrato assinado anexado em {formatDateTime(distratoAssinado.uploaded_at)}.</span>
-            {distratoAssinadoUrl && (
-              <a
-                href={distratoAssinadoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[var(--blue-400)] hover:underline"
-              >
-                <FileText size={14} />
-                Ver arquivo
-              </a>
+          <CardBody className="space-y-3 text-sm text-white/60">
+            <div className="flex items-center justify-between">
+              <span>Distrato assinado anexado em {formatDateTime(distratoAssinado.uploaded_at)}.</span>
+              {distratoAssinadoUrl && (
+                <a
+                  href={distratoAssinadoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[var(--blue-400)] hover:underline"
+                >
+                  <FileText size={14} />
+                  Ver arquivo
+                </a>
+              )}
+            </div>
+            {solicitacao && (
+              <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
+                {solicitacao.distrato_assinado_enviado_em ? (
+                  <span className="text-xs text-white/40">
+                    Enviado ao advogado em {formatDateTime(solicitacao.distrato_assinado_enviado_em)}.
+                  </span>
+                ) : (
+                  <span className="text-xs text-white/40">Ainda não enviado ao advogado.</span>
+                )}
+                <form action={enviarDistratoAdvogadoAction}>
+                  <input type="hidden" name="desligamento_id" value={desligamento.id} />
+                  <input type="hidden" name="documento_id" value={distratoAssinado.id} />
+                  <Button type="submit" size="sm" variant="secondary">
+                    <Mail size={14} />
+                    {solicitacao.distrato_assinado_enviado_em ? "Reenviar ao advogado" : "Enviar ao advogado"}
+                  </Button>
+                </form>
+              </div>
             )}
           </CardBody>
         </Card>

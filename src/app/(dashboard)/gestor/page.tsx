@@ -49,20 +49,22 @@ export default async function GestorPage() {
       ) : (
         <div className="space-y-3">
           {desligamentos.map((d) => (
-            <Card key={d.id}>
-              <CardBody className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-display text-sm font-medium text-[var(--ink-000)]">
-                    {d.colaborador?.nome}
-                  </p>
-                  <p className="mt-0.5 text-xs text-white/40">
-                    {d.colaborador?.cargo ?? "Sem cargo informado"} · conversa em{" "}
-                    {formatDate(d.data_conversa)}
-                  </p>
-                </div>
-                <StatusBadge status={d.status} />
-              </CardBody>
-            </Card>
+            <Link key={d.id} href={`/gestor/${d.id}`} className="block">
+              <Card className="cursor-pointer transition-colors hover:border-[var(--blue-400)]/40">
+                <CardBody className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-display text-sm font-medium text-[var(--ink-000)]">
+                      {d.colaborador?.nome}
+                    </p>
+                    <p className="mt-0.5 text-xs text-white/40">
+                      {d.colaborador?.cargo ?? "Sem cargo informado"} · conversa em{" "}
+                      {formatDate(d.data_conversa)}
+                    </p>
+                  </div>
+                  <StatusBadge status={d.status} />
+                </CardBody>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

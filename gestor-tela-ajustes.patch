@@ -1,0 +1,432 @@
+diff --git a/src/app/(dashboard)/gestor/[id]/page.tsx b/src/app/(dashboard)/gestor/[id]/page.tsx
+new file mode 100644
+index 0000000..f15c93d
+--- /dev/null
++++ b/src/app/(dashboard)/gestor/[id]/page.tsx
+@@ -0,0 +1,203 @@
++import Link from "next/link";
++import { ArrowLeft, FileText } from "lucide-react";
++import { requireRole } from "@/lib/auth";
++import { createClient } from "@/lib/supabase/server";
++import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
++import { StatusPipeline } from "@/components/ui/status-pipeline";
++import { StatusBadge, Pill } from "@/components/ui/badge";
++import { formatBRL, formatDate, formatDateTime } from "@/lib/utils";
++import type {
++  Desligamento,
++  Colaborador,
++  Acordo,
++  ValoresFinanceiros,
++  SolicitacaoAdvogado,
++  DocumentoRow,
++  Pagamento,
++} from "@/lib/types";
++
++const TIPO_VINCULO_LABEL: Record<string, string> = {
++  clt: "CLT",
++  pj: "PJ",
++  estagio: "Estágio",
++};
++
++export default async function GestorDesligamentoDetalhePage({
++  params,
++}: {
++  params: Promise<{ id: string }>;
++}) {
++  const profile = await requireRole(["gestor", "admin"]);
++  const { id } = await params;
++  const supabase = await createClient();
++
++  const { data } = await supabase
++    .from("desligamentos")
++    .select(
++      `*, colaborador:colaboradores(*), acordo:acordos(*), valores:valores_financeiros(*),
++       solicitacoes:solicitacoes_advogado(*), documentos(*), pagamento:pagamentos(*)`
++    )
++    .eq("id", id)
++    .eq("gestor_id", profile.id)
++    .single();
++
++  if (!data) {
++    return <p className="text-white/50">Desligamento não encontrado.</p>;
++  }
++
++  const desligamento = data as Desligamento & {
++    colaborador: Colaborador;
++    acordo: Acordo[];
++    valores: ValoresFinanceiros | null;
++    solicitacoes: SolicitacaoAdvogado[];
++    documentos: DocumentoRow[];
++    pagamento: Pagamento | null;
++  };
++
++  const acordo = desligamento.acordo?.[0];
++  const valores = desligamento.valores;
++  const solicitacao = desligamento.solicitacoes?.sort((a, b) =>
++    b.solicitado_em.localeCompare(a.solicitado_em)
++  )?.[0];
++  const distratoAssinado = desligamento.documentos?.find((d) => d.tipo === "distrato_assinado");
++  const pagamento = desligamento.pagamento;
++  const status = desligamento.status;
++
++  return (
++    <div className="max-w-3xl">
++      <Link href="/gestor" className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70">
++        <ArrowLeft size={14} />
++        Voltar para meus desligamentos
++      </Link>
++
++      <div className="mb-6 flex items-start justify-between">
++        <div>
++          <h1 className="font-display text-2xl font-semibold text-[var(--ink-000)]">
++            {desligamento.colaborador?.nome}
++          </h1>
++          <p className="mt-1 text-sm text-white/40">
++            {desligamento.colaborador?.cargo ?? "Sem cargo informado"} ·{" "}
++            {TIPO_VINCULO_LABEL[desligamento.colaborador?.tipo_vinculo] ?? "CLT"} · conversa em{" "}
++            {formatDate(desligamento.data_conversa)}
++          </p>
++        </div>
++        <StatusBadge status={status} />
++      </div>
++
++      <Card className="mb-6">
++        <CardBody className="py-6">
++          <StatusPipeline status={status} />
++        </CardBody>
++      </Card>
++
++      {/* Acordo */}
++      <Card className="mb-5">
++        <CardHeader>
++          <CardTitle>Conversa e condições acordadas</CardTitle>
++        </CardHeader>
++        <CardBody className="space-y-3 text-sm">
++          {desligamento.motivo && (
++            <p className="text-white/70">
++              <span className="text-white/40">Motivo: </span>
++              {desligamento.motivo}
++            </p>
++          )}
++          <div className="flex flex-wrap gap-2">
++            <Pill tone={acordo?.tem_multa ? "warn" : "neutral"}>
++              {acordo?.tem_multa
++                ? `Com multa · ${acordo.multa_responsavel === "empresa" ? "FI paga" : "colaborador paga"}`
++                : "Sem multa"}
++            </Pill>
++            <Pill tone={acordo?.tem_acordo ? "accent" : "neutral"}>
++              {acordo?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
++            </Pill>
++          </div>
++          {acordo?.condicoes && <p className="text-white/70">{acordo.condicoes}</p>}
++        </CardBody>
++      </Card>
++
++      {/* Valores financeiros */}
++      <Card className="mb-5">
++        <CardHeader>
++          <CardTitle>Valores (financeiro)</CardTitle>
++        </CardHeader>
++        <CardBody className="text-sm">
++          {valores ? (
++            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
++              <div>
++                <p className="text-white/40 text-xs">Salário base</p>
++                <p className="text-white/85">{formatBRL(valores.salario_base)}</p>
++              </div>
++              <div>
++                <p className="text-white/40 text-xs">Dias trabalhados</p>
++                <p className="text-white/85">{valores.dias_trabalhados}</p>
++              </div>
++              <div>
++                <p className="text-white/40 text-xs">Multa + acordo</p>
++                <p className="text-white/85">{formatBRL(valores.valor_multa + valores.valor_acordo)}</p>
++              </div>
++              <div>
++                <p className="text-white/40 text-xs">Valor total</p>
++                <p className="font-display text-[var(--blue-400)]">{formatBRL(valores.valor_total)}</p>
++              </div>
++            </div>
++          ) : (
++            <p className="text-white/40">Aguardando o financeiro informar os valores.</p>
++          )}
++        </CardBody>
++      </Card>
++
++      {/* Solicitação ao advogado */}
++      {solicitacao && (
++        <Card className="mb-5">
++          <CardHeader>
++            <CardTitle>Solicitação ao advogado</CardTitle>
++          </CardHeader>
++          <CardBody className="space-y-1.5 text-sm text-white/70">
++            <p>
++              <span className="text-white/40">Advogado: </span>
++              {solicitacao.advogado_nome} · {solicitacao.advogado_email}
++            </p>
++            <p>
++              <span className="text-white/40">Enviada em: </span>
++              {formatDateTime(solicitacao.solicitado_em)}
++            </p>
++            <p>
++              <span className="text-white/40">Prazo estimado: </span>
++              {formatDate(solicitacao.prazo_limite)}
++            </p>
++          </CardBody>
++        </Card>
++      )}
++
++      {/* Distrato assinado */}
++      {distratoAssinado && (
++        <Card className="mb-5">
++          <CardBody className="flex items-center justify-between text-sm text-white/60">
++            <span>Distrato assinado anexado em {formatDateTime(distratoAssinado.uploaded_at)}.</span>
++            <FileText size={14} className="text-white/30" />
++          </CardBody>
++        </Card>
++      )}
++
++      {/* Pagamento */}
++      {pagamento && (
++        <Card className="mb-5">
++          <CardHeader>
++            <CardTitle>Pagamento</CardTitle>
++          </CardHeader>
++          <CardBody className="space-y-1.5 text-sm text-white/70">
++            <p>
++              <span className="text-white/40">Previsto para: </span>
++              {formatDate(pagamento.data_prevista)}
++            </p>
++            <p>
++              <span className="text-white/40">Status: </span>
++              {pagamento.status === "pago" ? "Pago" : "Aguardando financeiro"}
++            </p>
++          </CardBody>
++        </Card>
++      )}
++    </div>
++  );
++}
+diff --git a/src/app/(dashboard)/gestor/actions.ts b/src/app/(dashboard)/gestor/actions.ts
+index 334f468..3bd6949 100644
+--- a/src/app/(dashboard)/gestor/actions.ts
++++ b/src/app/(dashboard)/gestor/actions.ts
+@@ -10,20 +10,26 @@ export async function registrarDesligamentoAction(formData: FormData) {
+ 
+   const nomeColaborador = String(formData.get("nome_colaborador") ?? "").trim();
+   const cargo = String(formData.get("cargo") ?? "").trim() || null;
++  const tipoVinculo = String(formData.get("tipo_vinculo") ?? "clt");
+   const dataConversa = String(formData.get("data_conversa") ?? "");
+   const dataUltimoDia = String(formData.get("data_ultimo_dia") ?? "") || null;
+   const motivo = String(formData.get("motivo") ?? "").trim() || null;
+   const condicoes = String(formData.get("condicoes") ?? "").trim() || null;
+   const temMulta = formData.get("tem_multa") === "on";
+   const temAcordo = formData.get("tem_acordo") === "on";
++  const multaResponsavel = String(formData.get("multa_responsavel") ?? "").trim() || null;
+ 
+   if (!nomeColaborador || !dataConversa) {
+     throw new Error("Nome do colaborador e data da conversa são obrigatórios.");
+   }
+ 
++  if (temMulta && !multaResponsavel) {
++    throw new Error("Informe quem paga a multa, já que há multa envolvida.");
++  }
++
+   const { data: colaborador, error: colaboradorError } = await supabase
+     .from("colaboradores")
+-    .insert({ nome: nomeColaborador, cargo, gestor_id: profile.id })
++    .insert({ nome: nomeColaborador, cargo, tipo_vinculo: tipoVinculo, gestor_id: profile.id })
+     .select()
+     .single();
+ 
+@@ -51,6 +57,7 @@ export async function registrarDesligamentoAction(formData: FormData) {
+   const { error: acordoError } = await supabase.from("acordos").insert({
+     desligamento_id: desligamento.id,
+     tem_multa: temMulta,
++    multa_responsavel: temMulta ? multaResponsavel : null,
+     tem_acordo: temAcordo,
+     condicoes,
+     registrado_por: profile.id,
+diff --git a/src/app/(dashboard)/gestor/novo/page.tsx b/src/app/(dashboard)/gestor/novo/page.tsx
+index 68f5764..2341a13 100644
+--- a/src/app/(dashboard)/gestor/novo/page.tsx
++++ b/src/app/(dashboard)/gestor/novo/page.tsx
+@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
+ import { requireRole } from "@/lib/auth";
+ import { registrarDesligamentoAction } from "../actions";
+ import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
+-import { Field, Input, Textarea, Checkbox } from "@/components/ui/form";
++import { Field, Input, Textarea, Checkbox, Select } from "@/components/ui/form";
+ import { Button } from "@/components/ui/button";
+ 
+ export default async function NovoDesligamentoPage() {
+@@ -38,6 +38,16 @@ export default async function NovoDesligamentoPage() {
+             <Field label="Cargo">
+               <Input name="cargo" placeholder="Ex.: Analista de Marketing" />
+             </Field>
++            <Field
++              label="Tipo de vínculo"
++              hint="Define se o colaborador precisa emitir nota fiscal"
++            >
++              <Select name="tipo_vinculo" defaultValue="clt" required>
++                <option value="clt">CLT</option>
++                <option value="pj">PJ</option>
++                <option value="estagio">Estágio</option>
++              </Select>
++            </Field>
+           </CardBody>
+         </Card>
+ 
+@@ -69,6 +79,16 @@ export default async function NovoDesligamentoPage() {
+               <Checkbox name="tem_multa" label="Há multa envolvida" />
+               <Checkbox name="tem_acordo" label="Há acordo específico" />
+             </div>
++            <Field
++              label="Quem paga a multa"
++              hint="Preencha somente se houver multa envolvida"
++            >
++              <Select name="multa_responsavel" defaultValue="">
++                <option value="">Não se aplica</option>
++                <option value="colaborador">Colaborador paga a multa</option>
++                <option value="empresa">FI paga a multa</option>
++              </Select>
++            </Field>
+             <Field label="Descrição das condições" hint="O que foi acordado entre gestor e colaborador">
+               <Textarea
+                 name="condicoes"
+diff --git a/src/app/(dashboard)/gestor/page.tsx b/src/app/(dashboard)/gestor/page.tsx
+index 742e39e..dbd8851 100644
+--- a/src/app/(dashboard)/gestor/page.tsx
++++ b/src/app/(dashboard)/gestor/page.tsx
+@@ -49,20 +49,22 @@ export default async function GestorPage() {
+       ) : (
+         <div className="space-y-3">
+           {desligamentos.map((d) => (
+-            <Card key={d.id}>
+-              <CardBody className="flex items-center justify-between gap-4">
+-                <div>
+-                  <p className="font-display text-sm font-medium text-[var(--ink-000)]">
+-                    {d.colaborador?.nome}
+-                  </p>
+-                  <p className="mt-0.5 text-xs text-white/40">
+-                    {d.colaborador?.cargo ?? "Sem cargo informado"} · conversa em{" "}
+-                    {formatDate(d.data_conversa)}
+-                  </p>
+-                </div>
+-                <StatusBadge status={d.status} />
+-              </CardBody>
+-            </Card>
++            <Link key={d.id} href={`/gestor/${d.id}`} className="block">
++              <Card className="cursor-pointer transition-colors hover:border-[var(--blue-400)]/40">
++                <CardBody className="flex items-center justify-between gap-4">
++                  <div>
++                    <p className="font-display text-sm font-medium text-[var(--ink-000)]">
++                      {d.colaborador?.nome}
++                    </p>
++                    <p className="mt-0.5 text-xs text-white/40">
++                      {d.colaborador?.cargo ?? "Sem cargo informado"} · conversa em{" "}
++                      {formatDate(d.data_conversa)}
++                    </p>
++                  </div>
++                  <StatusBadge status={d.status} />
++                </CardBody>
++              </Card>
++            </Link>
+           ))}
+         </div>
+       )}
+diff --git a/src/components/sidebar.tsx b/src/components/sidebar.tsx
+index f85781d..bdc7179 100644
+--- a/src/components/sidebar.tsx
++++ b/src/components/sidebar.tsx
+@@ -36,7 +36,7 @@ export function Sidebar({ profile }: { profile: Profile }) {
+   const items = NAV[profile.role];
+ 
+   return (
+-    <aside className="flex h-screen w-64 flex-none flex-col border-r border-white/[0.06] bg-[var(--navy-900)]/70">
++    <aside className="sticky top-0 flex h-screen w-64 flex-none flex-col self-start border-r border-white/[0.06] bg-[var(--navy-900)]/70">
+       <div className="flex items-center gap-2.5 px-5 py-6">
+         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--blue-600)] shadow-[0_0_20px_rgba(0,117,237,0.5)]">
+           <Scale size={16} className="text-white" />
+diff --git a/src/components/ui/button.tsx b/src/components/ui/button.tsx
+index 2e19e4c..64ccee3 100644
+--- a/src/components/ui/button.tsx
++++ b/src/components/ui/button.tsx
+@@ -10,7 +10,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+ }
+ 
+ const base =
+-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap";
++  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap";
+ 
+ const variants: Record<Variant, string> = {
+   primary:
+diff --git a/src/lib/types.ts b/src/lib/types.ts
+index 7c84eb6..6d08584 100644
+--- a/src/lib/types.ts
++++ b/src/lib/types.ts
+@@ -18,6 +18,8 @@ export type StatusDesligamento =
+ 
+ export type TipoDocumento = "minuta_distrato" | "distrato_assinado" | "nota_fiscal";
+ export type StatusDocumento = "pendente" | "em_conferencia" | "aprovado" | "rejeitado";
++export type TipoVinculo = "clt" | "pj" | "estagio";
++export type ResponsavelMulta = "colaborador" | "empresa";
+ 
+ export interface Profile {
+   id: string;
+@@ -32,6 +34,8 @@ export interface Colaborador {
+   nome: string;
+   cargo: string | null;
+   email: string | null;
++  cpf: string | null;
++  tipo_vinculo: TipoVinculo;
+   data_admissao: string | null;
+   gestor_id: string;
+   ativo: boolean;
+@@ -59,6 +63,7 @@ export interface Acordo {
+   id: string;
+   desligamento_id: string;
+   tem_multa: boolean;
++  multa_responsavel: ResponsavelMulta | null;
+   tem_acordo: boolean;
+   condicoes: string | null;
+   registrado_por: string | null;
+@@ -89,6 +94,7 @@ export interface SolicitacaoAdvogado {
+   prazo_limite: string | null;
+   usado_em: string | null;
+   observacoes: string | null;
++  distrato_assinado_enviado_em: string | null;
+ }
+ 
+ export interface SolicitacaoNf {
+diff --git a/supabase/migrations/20260724000000_vinculo_multa_cpf.sql b/supabase/migrations/20260724000000_vinculo_multa_cpf.sql
+new file mode 100644
+index 0000000..cb8dd4c
+--- /dev/null
++++ b/supabase/migrations/20260724000000_vinculo_multa_cpf.sql
+@@ -0,0 +1,25 @@
++-- =============================================================================
++-- Adiciona: tipo de vínculo do colaborador (define emissão de NF), responsável
++-- pelo pagamento da multa (colaborador x empresa) e CPF do colaborador
++-- (preenchido pelo RH, necessário para o distrato).
++-- =============================================================================
++
++-- -----------------------------------------------------------------------------
++-- 1. Tipo de vínculo — define se o colaborador emite nota fiscal (PJ) ou não
++-- -----------------------------------------------------------------------------
++create type tipo_vinculo as enum ('clt', 'pj', 'estagio');
++
++alter table colaboradores add column if not exists tipo_vinculo tipo_vinculo not null default 'clt';
++alter table colaboradores add column if not exists cpf text;
++
++-- -----------------------------------------------------------------------------
++-- 2. Responsável pela multa — quem paga quando `tem_multa` é verdadeiro
++-- -----------------------------------------------------------------------------
++create type responsavel_multa as enum ('colaborador', 'empresa');
++
++alter table acordos add column if not exists multa_responsavel responsavel_multa;
++
++-- -----------------------------------------------------------------------------
++-- 3. Marca de envio do distrato assinado ao advogado (PDF)
++-- -----------------------------------------------------------------------------
++alter table solicitacoes_advogado add column if not exists distrato_assinado_enviado_em timestamptz;

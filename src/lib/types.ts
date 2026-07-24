@@ -18,6 +18,8 @@ export type StatusDesligamento =
 
 export type TipoDocumento = "minuta_distrato" | "distrato_assinado" | "nota_fiscal";
 export type StatusDocumento = "pendente" | "em_conferencia" | "aprovado" | "rejeitado";
+export type TipoVinculo = "clt" | "pj" | "estagio";
+export type ResponsavelMulta = "colaborador" | "empresa";
 
 export interface Profile {
   id: string;
@@ -32,6 +34,8 @@ export interface Colaborador {
   nome: string;
   cargo: string | null;
   email: string | null;
+  cpf: string | null;
+  tipo_vinculo: TipoVinculo;
   data_admissao: string | null;
   gestor_id: string;
   ativo: boolean;
@@ -59,6 +63,7 @@ export interface Acordo {
   id: string;
   desligamento_id: string;
   tem_multa: boolean;
+  multa_responsavel: ResponsavelMulta | null;
   tem_acordo: boolean;
   condicoes: string | null;
   registrado_por: string | null;
@@ -89,6 +94,7 @@ export interface SolicitacaoAdvogado {
   prazo_limite: string | null;
   usado_em: string | null;
   observacoes: string | null;
+  distrato_assinado_enviado_em: string | null;
 }
 
 export interface SolicitacaoNf {
@@ -134,6 +140,18 @@ export interface Pagamento {
   data_realizado: string | null;
   valor_pago: number | null;
   status: "pendente" | "liberado" | "pago";
+}
+
+export interface ParcelaPagamento {
+  id: string;
+  desligamento_id: string;
+  numero_parcela: number;
+  valor: number;
+  data_prevista: string | null;
+  data_realizado: string | null;
+  status: "pendente" | "liberado" | "pago";
+  registrado_por: string | null;
+  created_at: string;
 }
 
 export interface HistoricoStatus {
