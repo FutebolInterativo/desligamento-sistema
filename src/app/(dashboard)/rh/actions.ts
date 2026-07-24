@@ -254,7 +254,6 @@ export async function atualizarProcedimentosAction(formData: FormData) {
   const materiais = formData.get("materiais_recolhidos") === "on";
   const acessos = formData.get("acessos_bloqueados") === "on";
   const beneficios = formData.get("beneficios_cancelados") === "on";
-  const nfNecessaria = formData.get("nf_necessaria") === "on";
 
   const todosConcluidos = materiais && acessos && beneficios;
 
@@ -276,6 +275,17 @@ export async function atualizarProcedimentosAction(formData: FormData) {
       .from("desligamentos")
       .update({ status: "aguardando_pagamento" })
       .eq("id", desligamentoId);
+
+    // NF só é exigida para vínculo PJ — CLT e Estágio não emitem nota.
+    const { data: desligamento } = await supabase
+      .from("desligamentos")
+      .select("colaborador:colaboradores(tipo_vinculo)")
+      .eq("id", desligamentoId)
+      .single();
+    const colaboradorInfo = Array.isArray(desligamento?.colaborador)
+      ? desligamento?.colaborador[0]
+      : desligamento?.colaborador;
+    const nfNecessaria = colaboradorInfo?.tipo_vinculo === "pj";
 
     const dataPrevista = addBusinessDays(new Date(), 5).toISOString().slice(0, 10);
     await supabase.from("pagamentos").upsert(

@@ -390,7 +390,13 @@ export default async function DesligamentoDetalhePage({
                   disabled={status !== "procedimentos_em_andamento"}
                 />
                 {status === "procedimentos_em_andamento" && (
-                  <Checkbox name="nf_necessaria" label="Este caso exige Nota Fiscal para o pagamento" />
+                  <p className="text-xs text-white/40">
+                    Nota fiscal: {desligamento.colaborador?.tipo_vinculo === "pj"
+                      ? "será exigida ao final (vínculo PJ)"
+                      : "não será exigida (vínculo " +
+                        (desligamento.colaborador?.tipo_vinculo === "estagio" ? "estágio" : "CLT") +
+                        ")"}
+                  </p>
                 )}
               </div>
               {status === "procedimentos_em_andamento" && (

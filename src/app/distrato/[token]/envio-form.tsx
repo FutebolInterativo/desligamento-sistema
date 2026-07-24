@@ -31,8 +31,13 @@ export function EnvioDistratoForm({ token }: { token: string }) {
           {result.message}
         </p>
       )}
-      <Field label="Distrato elaborado (PDF)">
-        <Input type="file" name="arquivo" accept="application/pdf" required />
+      <Field label="Distrato elaborado (PDF ou Word)">
+        <Input
+          type="file"
+          name="arquivo"
+          accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+          required
+        />
       </Field>
       <Button type="submit" disabled={pending} className="w-full">
         <UploadCloud size={15} />

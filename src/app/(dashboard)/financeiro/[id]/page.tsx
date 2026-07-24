@@ -180,10 +180,32 @@ export default async function FinanceiroDetalhePage({
               </Field>
             </div>
             {valores && (
-              <p className="text-sm text-white/60">
-                Valor total apurado:{" "}
-                <span className="font-display text-[var(--blue-400)]">{formatBRL(valores.valor_total)}</span>
-              </p>
+              <div className="space-y-1.5 rounded-lg border border-white/10 bg-[var(--midnight)]/40 p-3 text-sm">
+                <p className="mb-1 text-xs font-mono-label text-white/40">Como o valor é calculado</p>
+                <div className="flex items-center justify-between text-white/60">
+                  <span>
+                    Proporcional (salário ÷ 30 × dias trabalhados) — {formatBRL(valores.salario_base)} ÷ 30 ×{" "}
+                    {valores.dias_trabalhados}
+                  </span>
+                  <span className="text-white/85">
+                    {formatBRL(
+                      Math.round((valores.salario_base / 30) * valores.dias_trabalhados * 100) / 100
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-white/60">
+                  <span>+ Multa</span>
+                  <span className="text-white/85">{formatBRL(valores.valor_multa)}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/60">
+                  <span>+ Acordo</span>
+                  <span className="text-white/85">{formatBRL(valores.valor_acordo)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-white/[0.06] pt-1.5 text-white/40">
+                  <span>= Valor total apurado</span>
+                  <span className="font-display text-[var(--blue-400)]">{formatBRL(valores.valor_total)}</span>
+                </div>
+              </div>
             )}
             <Button type="submit" size="sm">
               <Calculator size={15} />

@@ -37,16 +37,22 @@ export async function enviarDistratoAction(formData: FormData) {
     return { ok: false as const, message: "Este link já foi utilizado para anexar o distrato." };
   }
   if (!file || file.size === 0) {
-    return { ok: false as const, message: "Selecione o arquivo PDF do distrato." };
-  }
-  if (file.type !== "application/pdf") {
-    return { ok: false as const, message: "Envie o distrato em formato PDF." };
+    return { ok: false as const, message: "Selecione o arquivo do distrato." };
   }
 
- const path = `${solicitacao.desligamento_id}/minuta-${Date.now()}.pdf`;
+  const TIPOS_ACEITOS: Record<string, string> = {
+    "application/pdf": "pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  };
+  const extensao = TIPOS_ACEITOS[file.type];
+  if (!extensao) {
+    return { ok: false as const, message: "Envie o distrato em formato PDF ou Word (.docx)." };
+  }
+
+  const path = `${solicitacao.desligamento_id}/minuta-${Date.now()}.${extensao}`;
   const { error: uploadError } = await admin.storage
     .from("distratos")
-    .upload(path, file, { contentType: "application/pdf" });
+    .upload(path, file, { contentType: file.type });
   if (uploadError) {
     console.error("[distrato upload]", uploadError);
     return { ok: false as const, message: `Falha ao enviar o arquivo: ${uploadError.message}` };
