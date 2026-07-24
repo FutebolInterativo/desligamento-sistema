@@ -48,10 +48,19 @@ export function emailSolicitacaoAdvogado(params: {
   link: string;
   condicoes: string | null;
   temMulta: boolean;
+  multaResponsavel: "colaborador" | "empresa" | null;
   temAcordo: boolean;
   valorTotal: number | null;
   prazoLimite: string | null;
 }) {
+  const multaLabel = params.temMulta
+    ? params.multaResponsavel === "empresa"
+      ? "Sim — multa paga pela FI"
+      : params.multaResponsavel === "colaborador"
+      ? "Sim — multa paga pelo colaborador"
+      : "Sim — responsável pelo pagamento não informado"
+    : "Não";
+
   return `
     <div style="font-family: Arial, sans-serif; color: #04133A; max-width: 560px;">
       <h2 style="color:#0075ED;">Solicitação de elaboração de distrato</h2>
@@ -59,7 +68,9 @@ export function emailSolicitacaoAdvogado(params: {
       <p>O RH solicita a elaboração do distrato de desligamento com os dados abaixo:</p>
       <ul>
         <li><strong>Colaborador:</strong> ${params.colaboradorNome}</li>
-        <li><strong>Multa:</strong> ${params.temMulta ? "Sim" : "Não"}</li>
+        <li><strong>Multa:</strong> <span style="${
+          params.temMulta ? "background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;" : ""
+        }">${multaLabel}</span></li>
         <li><strong>Acordo específico:</strong> ${params.temAcordo ? "Sim" : "Não"}</li>
         <li><strong>Condições acordadas:</strong> ${params.condicoes ?? "—"}</li>
         <li><strong>Valor total apurado:</strong> ${

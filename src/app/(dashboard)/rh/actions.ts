@@ -124,6 +124,7 @@ export async function solicitarAdvogadoAction(formData: FormData) {
     motivo: desligamento.motivo,
     condicoes: desligamento.acordo?.[0]?.condicoes ?? null,
     tem_multa: desligamento.acordo?.[0]?.tem_multa ?? false,
+    multa_responsavel: desligamento.acordo?.[0]?.multa_responsavel ?? null,
     tem_acordo: desligamento.acordo?.[0]?.tem_acordo ?? false,
     valor_total: desligamento.valores?.[0]?.valor_total ?? null,
   };
@@ -161,6 +162,7 @@ export async function solicitarAdvogadoAction(formData: FormData) {
       link,
       condicoes: dadosEnviados.condicoes,
       temMulta: dadosEnviados.tem_multa,
+      multaResponsavel: dadosEnviados.multa_responsavel,
       temAcordo: dadosEnviados.tem_acordo,
       valorTotal: dadosEnviados.valor_total,
       prazoLimite,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, AlertTriangle } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
@@ -104,14 +104,24 @@ export default async function GestorDesligamentoDetalhePage({
           )}
           <div className="flex flex-wrap gap-2">
             <Pill tone={acordo?.tem_multa ? "warn" : "neutral"}>
-              {acordo?.tem_multa
-                ? `Com multa · ${acordo.multa_responsavel === "empresa" ? "FI paga" : "colaborador paga"}`
-                : "Sem multa"}
+              {acordo?.tem_multa ? "Com multa" : "Sem multa"}
             </Pill>
             <Pill tone={acordo?.tem_acordo ? "accent" : "neutral"}>
               {acordo?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
             </Pill>
           </div>
+          {acordo?.tem_multa && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              <AlertTriangle size={16} className="flex-none text-amber-400" />
+              <span className="text-sm font-medium text-amber-200">
+                {acordo.multa_responsavel === "empresa"
+                  ? "A multa é paga pela FI"
+                  : acordo.multa_responsavel === "colaborador"
+                  ? "A multa é paga pelo colaborador"
+                  : "Responsável pela multa ainda não informado"}
+              </span>
+            </div>
+          )}
           {acordo?.condicoes && <p className="text-white/70">{acordo.condicoes}</p>}
         </CardBody>
       </Card>

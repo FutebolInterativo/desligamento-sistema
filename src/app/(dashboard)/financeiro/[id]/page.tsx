@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Calculator, FileText } from "lucide-react";
+import { ArrowLeft, Calculator, FileText, AlertTriangle } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSignedUrl } from "@/lib/storage";
@@ -124,14 +124,24 @@ export default async function FinanceiroDetalhePage({
           )}
           <div className="flex gap-2">
             <Pill tone={acordo?.tem_multa ? "warn" : "neutral"}>
-              {acordo?.tem_multa
-                ? `Com multa · ${acordo.multa_responsavel === "empresa" ? "FI paga" : "colaborador paga"}`
-                : "Sem multa"}
+              {acordo?.tem_multa ? "Com multa" : "Sem multa"}
             </Pill>
             <Pill tone={acordo?.tem_acordo ? "accent" : "neutral"}>
               {acordo?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
             </Pill>
           </div>
+          {acordo?.tem_multa && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              <AlertTriangle size={16} className="flex-none text-amber-400" />
+              <span className="text-sm font-medium text-amber-200">
+                {acordo.multa_responsavel === "empresa"
+                  ? "A multa é paga pela FI"
+                  : acordo.multa_responsavel === "colaborador"
+                  ? "A multa é paga pelo colaborador"
+                  : "Responsável pela multa ainda não informado"}
+              </span>
+            </div>
+          )}
           {acordo?.condicoes && <p className="text-white/70">{acordo.condicoes}</p>}
         </CardBody>
       </Card>
@@ -194,7 +204,15 @@ export default async function FinanceiroDetalhePage({
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-white/60">
-                  <span>+ Multa</span>
+                  <span>
+                    + Multa
+                    {acordo?.tem_multa && acordo.multa_responsavel && (
+                      <span className="text-white/35">
+                        {" "}
+                        ({acordo.multa_responsavel === "empresa" ? "paga pela FI" : "paga pelo colaborador"})
+                      </span>
+                    )}
+                  </span>
                   <span className="text-white/85">{formatBRL(valores.valor_multa)}</span>
                 </div>
                 <div className="flex items-center justify-between text-white/60">

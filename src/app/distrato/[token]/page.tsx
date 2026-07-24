@@ -1,4 +1,4 @@
-import { Scale, FileWarning } from "lucide-react";
+import { Scale, FileWarning, AlertTriangle } from "lucide-react";
 import { buscarSolicitacaoPorToken } from "./actions";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pill } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ export default async function DistratoTokenPage({
     cargo?: string;
     condicoes?: string | null;
     tem_multa?: boolean;
+    multa_responsavel?: "colaborador" | "empresa" | null;
     tem_acordo?: boolean;
     valor_total?: number | null;
   } | null;
@@ -69,6 +70,18 @@ export default async function DistratoTokenPage({
                 {dados?.tem_acordo ? "Com acordo específico" : "Sem acordo específico"}
               </Pill>
             </div>
+            {dados?.tem_multa && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                <AlertTriangle size={16} className="flex-none text-amber-400" />
+                <span className="text-sm font-medium text-amber-200">
+                  {dados.multa_responsavel === "empresa"
+                    ? "A multa é paga pela FI"
+                    : dados.multa_responsavel === "colaborador"
+                    ? "A multa é paga pelo colaborador"
+                    : "Responsável pela multa não informado — confirme com o RH"}
+                </span>
+              </div>
+            )}
             {dados?.condicoes && <p className="text-white/70">{dados.condicoes}</p>}
             <p className="text-white/70">
               <span className="text-white/40">Valor total apurado: </span>
