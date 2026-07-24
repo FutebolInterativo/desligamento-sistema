@@ -85,8 +85,6 @@ export function emailSolicitacaoAdvogado(params: {
       : "Sim — responsável pelo pagamento não informado"
     : "Não";
 
-  const temValores = d.salario_base != null;
-
   return `
     <div style="font-family: Arial, sans-serif; color: #04133A; max-width: 560px;">
       <h2 style="color:#0075ED;">Solicitação de elaboração de distrato</h2>
@@ -116,18 +114,15 @@ export function emailSolicitacaoAdvogado(params: {
       </ul>
 
       <h3 style="color:#0075ED;font-size:14px;margin-bottom:4px;">Valores</h3>
-      ${
-        temValores
-          ? `
       <ul style="margin-top:4px;">
-        <li><strong>Salário base:</strong> ${formatBRL(d.salario_base)}</li>
+        <li><strong>Salário base:</strong> ${d.salario_base != null ? formatBRL(d.salario_base) : "não informado pelo gestor"}</li>
         <li><strong>Dias trabalhados no mês:</strong> ${d.dias_trabalhados ?? "a confirmar pelo RH"}</li>
-        <li><strong>Valor de multa:</strong> ${formatBRL(d.valor_multa)}</li>
-        <li><strong>Valor de acordo:</strong> ${formatBRL(d.valor_acordo)}</li>
-        <li><strong>Valor total apurado:</strong> ${formatBRL(d.valor_total)}</li>
-      </ul>`
-          : `<p style="color:#667;">Ainda não apurados pelo financeiro — a definir.</p>`
-      }
+        <li><strong>Valor de multa:</strong> ${formatBRL(d.valor_multa ?? 0)}</li>
+        <li><strong>Valor de acordo:</strong> ${formatBRL(d.valor_acordo ?? 0)}</li>
+        <li><strong>Valor total apurado:</strong> ${
+          d.valor_total != null ? formatBRL(d.valor_total) : "a confirmar (depende dos dias trabalhados)"
+        }</li>
+      </ul>
 
       ${params.prazoLimite ? `<p><strong>Prazo estimado:</strong> ${formatDate(params.prazoLimite)}</p>` : ""}
       ${params.observacoes ? `<p><strong>Observações do RH:</strong> ${params.observacoes}</p>` : ""}

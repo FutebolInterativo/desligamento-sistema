@@ -172,7 +172,7 @@ export default async function DesligamentoDetalhePage({
       {/* Valores financeiros — preenchidos pelo gestor; RH só completa os dias trabalhados */}
       <Card className="mb-5">
         <CardHeader>
-          <CardTitle>Valores (financeiro)</CardTitle>
+          <CardTitle>Valores</CardTitle>
         </CardHeader>
         <CardBody className="text-sm">
           {valores ? (

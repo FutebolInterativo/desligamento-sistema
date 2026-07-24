@@ -126,10 +126,10 @@ export default async function GestorDesligamentoDetalhePage({
         </CardBody>
       </Card>
 
-      {/* Valores financeiros */}
+      {/* Valores negociados */}
       <Card className="mb-5">
         <CardHeader>
-          <CardTitle>Valores (financeiro)</CardTitle>
+          <CardTitle>Valores</CardTitle>
         </CardHeader>
         <CardBody className="text-sm">
           {valores ? (
@@ -140,7 +140,7 @@ export default async function GestorDesligamentoDetalhePage({
               </div>
               <div>
                 <p className="text-white/40 text-xs">Dias trabalhados</p>
-                <p className="text-white/85">{valores.dias_trabalhados ?? "—"}</p>
+                <p className="text-white/85">{valores.dias_trabalhados ?? "a confirmar pelo RH"}</p>
               </div>
               <div>
                 <p className="text-white/40 text-xs">Multa + acordo</p>
@@ -148,11 +148,13 @@ export default async function GestorDesligamentoDetalhePage({
               </div>
               <div>
                 <p className="text-white/40 text-xs">Valor total</p>
-                <p className="font-display text-[var(--blue-400)]">{formatBRL(valores.valor_total)}</p>
+                <p className="font-display text-[var(--blue-400)]">
+                  {valores.valor_total != null ? formatBRL(valores.valor_total) : "a calcular"}
+                </p>
               </div>
             </div>
           ) : (
-            <p className="text-white/40">Aguardando o financeiro informar os valores.</p>
+            <p className="text-white/40">Nenhum valor registrado ainda.</p>
           )}
         </CardBody>
       </Card>

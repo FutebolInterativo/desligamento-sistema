@@ -128,32 +128,30 @@ export default async function DistratoTokenPage({
 
             <div className="rounded-lg border border-white/10 bg-[var(--midnight)]/40 p-3">
               <p className="mb-1.5 text-xs font-mono-label text-white/40">Valores</p>
-              {dados?.salario_base != null ? (
-                <div className="space-y-1 text-white/70">
-                  <p>
-                    <span className="text-white/40">Salário base: </span>
-                    {formatBRL(dados.salario_base)}
-                  </p>
-                  <p>
-                    <span className="text-white/40">Dias trabalhados: </span>
-                    {dados.dias_trabalhados ?? "a confirmar pelo RH"}
-                  </p>
-                  <p>
-                    <span className="text-white/40">Valor de multa: </span>
-                    {formatBRL(dados.valor_multa)}
-                  </p>
-                  <p>
-                    <span className="text-white/40">Valor de acordo: </span>
-                    {formatBRL(dados.valor_acordo)}
-                  </p>
-                  <p className="pt-1 text-[var(--blue-400)]">
-                    <span className="text-white/40">Valor total apurado: </span>
-                    {formatBRL(dados.valor_total)}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-white/40">Ainda não apurados pelo financeiro.</p>
-              )}
+              <div className="space-y-1 text-white/70">
+                <p>
+                  <span className="text-white/40">Salário base: </span>
+                  {dados?.salario_base != null ? formatBRL(dados.salario_base) : "não informado pelo gestor"}
+                </p>
+                <p>
+                  <span className="text-white/40">Dias trabalhados: </span>
+                  {dados?.dias_trabalhados ?? "a confirmar pelo RH"}
+                </p>
+                <p>
+                  <span className="text-white/40">Valor de multa: </span>
+                  {formatBRL(dados?.valor_multa ?? 0)}
+                </p>
+                <p>
+                  <span className="text-white/40">Valor de acordo: </span>
+                  {formatBRL(dados?.valor_acordo ?? 0)}
+                </p>
+                <p className="pt-1 text-[var(--blue-400)]">
+                  <span className="text-white/40">Valor total apurado: </span>
+                  {dados?.valor_total != null
+                    ? formatBRL(dados.valor_total)
+                    : "a confirmar (depende dos dias trabalhados)"}
+                </p>
+              </div>
             </div>
 
             {solicitacao.prazo_limite && (
