@@ -77,6 +77,7 @@ export interface ValoresFinanceiros {
   dias_trabalhados: number | null;
   valor_multa: number;
   valor_acordo: number;
+  multa_responsavel: "colaborador" | "empresa" | null;
   valor_total: number | null;
   observacoes: string | null;
   informado_por: string | null;

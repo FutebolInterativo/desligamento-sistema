@@ -26,7 +26,22 @@ export default async function DistratoTokenPage({
     );
   }
 
-  const dados = solicitacao.dados_enviados as {
+  const desligamentoLive = solicitacao.desligamento as {
+    motivo: string | null;
+    data_conversa: string | null;
+    data_ultimo_dia_trabalhado: string | null;
+    colaborador?: { nome?: string; cargo?: string | null; cpf?: string | null; tipo_vinculo?: string | null };
+    acordo?: { tem_multa: boolean; multa_responsavel: "colaborador" | "empresa" | null; tem_acordo: boolean; condicoes: string | null }[];
+    valores?: { salario_base: number; dias_trabalhados: number | null; valor_multa: number; valor_acordo: number; valor_total: number | null }[];
+  } | null;
+
+  const acordoLive = desligamentoLive?.acordo?.[0];
+  const valoresLive = desligamentoLive?.valores?.[0];
+
+  // Retrato tirado no momento da solicitação — usado só como último recurso
+  // (ex.: caso alguém edite/apague dados depois). Sempre que existir dado
+  // ao vivo, ele prevalece, pra refletir o que o RH preencheu depois.
+  const snapshot = solicitacao.dados_enviados as {
     colaborador?: string;
     cargo?: string;
     cpf?: string | null;
@@ -44,6 +59,26 @@ export default async function DistratoTokenPage({
     valor_acordo?: number | null;
     valor_total?: number | null;
   } | null;
+
+  const dados = {
+    colaborador: desligamentoLive?.colaborador?.nome ?? snapshot?.colaborador,
+    cargo: desligamentoLive?.colaborador?.cargo ?? snapshot?.cargo,
+    cpf: desligamentoLive?.colaborador?.cpf ?? snapshot?.cpf,
+    tipo_vinculo: desligamentoLive?.colaborador?.tipo_vinculo ?? snapshot?.tipo_vinculo,
+    data_conversa: desligamentoLive?.data_conversa ?? snapshot?.data_conversa,
+    data_ultimo_dia_trabalhado:
+      desligamentoLive?.data_ultimo_dia_trabalhado ?? snapshot?.data_ultimo_dia_trabalhado,
+    motivo: desligamentoLive?.motivo ?? snapshot?.motivo,
+    condicoes: acordoLive?.condicoes ?? snapshot?.condicoes,
+    tem_multa: acordoLive?.tem_multa ?? snapshot?.tem_multa,
+    multa_responsavel: acordoLive?.multa_responsavel ?? snapshot?.multa_responsavel,
+    tem_acordo: acordoLive?.tem_acordo ?? snapshot?.tem_acordo,
+    salario_base: valoresLive?.salario_base ?? snapshot?.salario_base,
+    dias_trabalhados: valoresLive?.dias_trabalhados ?? snapshot?.dias_trabalhados,
+    valor_multa: valoresLive?.valor_multa ?? snapshot?.valor_multa,
+    valor_acordo: valoresLive?.valor_acordo ?? snapshot?.valor_acordo,
+    valor_total: valoresLive?.valor_total ?? snapshot?.valor_total,
+  };
 
   const TIPO_VINCULO_LABEL: Record<string, string> = {
     clt: "CLT",
@@ -140,6 +175,9 @@ export default async function DistratoTokenPage({
                 <p>
                   <span className="text-white/40">Valor de multa: </span>
                   {formatBRL(dados?.valor_multa ?? 0)}
+                  {dados?.tem_multa && dados.multa_responsavel === "colaborador" && (
+                    <span className="text-red-300"> (descontado do colaborador)</span>
+                  )}
                 </p>
                 <p>
                   <span className="text-white/40">Valor de acordo: </span>

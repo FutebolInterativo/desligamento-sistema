@@ -10,7 +10,14 @@ export async function buscarSolicitacaoPorToken(token: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("solicitacoes_advogado")
-    .select("*, desligamento:desligamentos(id, status, colaborador:colaboradores(nome, cargo))")
+    .select(
+      `*, desligamento:desligamentos(
+        id, status, motivo, data_conversa, data_ultimo_dia_trabalhado,
+        colaborador:colaboradores(nome, cargo, cpf, tipo_vinculo),
+        acordo:acordos(tem_multa, multa_responsavel, tem_acordo, condicoes),
+        valores:valores_financeiros(salario_base, dias_trabalhados, valor_multa, valor_acordo, valor_total)
+      )`
+    )
     .eq("token", token)
     .single();
 

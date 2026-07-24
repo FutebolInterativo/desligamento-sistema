@@ -133,7 +133,7 @@ export default async function GestorDesligamentoDetalhePage({
         </CardHeader>
         <CardBody className="text-sm">
           {valores ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div>
                 <p className="text-white/40 text-xs">Salário base</p>
                 <p className="text-white/85">{formatBRL(valores.salario_base)}</p>
@@ -143,8 +143,17 @@ export default async function GestorDesligamentoDetalhePage({
                 <p className="text-white/85">{valores.dias_trabalhados ?? "a confirmar pelo RH"}</p>
               </div>
               <div>
-                <p className="text-white/40 text-xs">Multa + acordo</p>
-                <p className="text-white/85">{formatBRL(valores.valor_multa + valores.valor_acordo)}</p>
+                <p className="text-white/40 text-xs">
+                  Multa {valores.multa_responsavel === "colaborador" ? "(desconto)" : ""}
+                </p>
+                <p className={valores.multa_responsavel === "colaborador" ? "text-red-300" : "text-white/85"}>
+                  {valores.multa_responsavel === "colaborador" ? "− " : ""}
+                  {formatBRL(valores.valor_multa)}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/40 text-xs">Acordo</p>
+                <p className="text-white/85">{formatBRL(valores.valor_acordo)}</p>
               </div>
               <div>
                 <p className="text-white/40 text-xs">Valor total</p>

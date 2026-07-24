@@ -68,9 +68,7 @@ export default async function DesligamentoDetalhePage({
   const solicitacao = desligamento.solicitacoes?.sort((a, b) =>
     b.solicitado_em.localeCompare(a.solicitado_em)
   )?.[0];
-  const minuta = desligamento.documentos
-    ?.filter((d) => d.tipo === "minuta_distrato")
-    ?.sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at))?.[0];
+  const minuta = desligamento.documentos?.find((d) => d.tipo === "minuta_distrato");
   const distratoAssinado = desligamento.documentos?.find((d) => d.tipo === "distrato_assinado");
   const notaFiscalDoc = desligamento.documentos?.find((d) => d.tipo === "nota_fiscal");
   const procedimentos = desligamento.procedimentos;
@@ -179,7 +177,7 @@ export default async function DesligamentoDetalhePage({
         <CardBody className="text-sm">
           {valores ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 <div>
                   <p className="text-white/40 text-xs">Salário base</p>
                   <p className="text-white/85">{formatBRL(valores.salario_base)}</p>
@@ -189,8 +187,17 @@ export default async function DesligamentoDetalhePage({
                   <p className="text-white/85">{valores.dias_trabalhados ?? "—"}</p>
                 </div>
                 <div>
-                  <p className="text-white/40 text-xs">Multa + acordo</p>
-                  <p className="text-white/85">{formatBRL(valores.valor_multa + valores.valor_acordo)}</p>
+                  <p className="text-white/40 text-xs">
+                    Multa {valores.multa_responsavel === "colaborador" ? "(desconto)" : ""}
+                  </p>
+                  <p className={valores.multa_responsavel === "colaborador" ? "text-red-300" : "text-white/85"}>
+                    {valores.multa_responsavel === "colaborador" ? "− " : ""}
+                    {formatBRL(valores.valor_multa)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-white/40 text-xs">Acordo</p>
+                  <p className="text-white/85">{formatBRL(valores.valor_acordo)}</p>
                 </div>
                 <div>
                   <p className="text-white/40 text-xs">Valor total</p>
@@ -279,26 +286,6 @@ export default async function DesligamentoDetalhePage({
         </Card>
       )}
 
-      {/* Distrato recebido do advogado — sempre disponível pra baixar de novo */}
-      {minuta && (
-        <Card className="mb-5">
-          <CardBody className="flex items-center justify-between text-sm text-white/60">
-            <span>Distrato recebido do advogado em {formatDateTime(minuta.uploaded_at)}.</span>
-            {minutaUrl && (
-              <a
-                href={minutaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[var(--blue-400)] hover:underline"
-              >
-                <FileText size={14} />
-                Baixar novamente
-              </a>
-            )}
-          </CardBody>
-        </Card>
-      )}
-
       {/* Conferência da minuta */}
       {minuta && status === "em_conferencia_rh" && (
         <Card className="mb-5">
@@ -306,6 +293,21 @@ export default async function DesligamentoDetalhePage({
             <CardTitle>Conferir distrato recebido</CardTitle>
           </CardHeader>
           <CardBody className="space-y-4">
+            <p className="text-sm text-white/60">
+              Documento recebido em {formatDateTime(minuta.uploaded_at)} — arquivo:{" "}
+              <span className="font-mono-label text-xs">{minuta.arquivo_path}</span>
+            </p>
+            {minutaUrl && (
+              <a
+                href={minutaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-[var(--blue-400)] hover:underline"
+              >
+                <FileText size={14} />
+                Ver arquivo
+              </a>
+            )}
             <form action={conferirDistratoAction} className="space-y-3">
               <input type="hidden" name="documento_id" value={minuta.id} />
               <input type="hidden" name="desligamento_id" value={desligamento.id} />

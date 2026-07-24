@@ -181,15 +181,17 @@ export default async function FinanceiroDetalhePage({
                   </div>
                   <div className="flex items-center justify-between text-white/60">
                     <span>
-                      + Multa
+                      {valores.multa_responsavel === "colaborador" ? "− Multa" : "+ Multa"}
                       {acordo?.tem_multa && acordo.multa_responsavel && (
                         <span className="text-white/35">
                           {" "}
-                          ({acordo.multa_responsavel === "empresa" ? "paga pela FI" : "paga pelo colaborador"})
+                          ({acordo.multa_responsavel === "empresa" ? "paga pela FI" : "descontada do colaborador"})
                         </span>
                       )}
                     </span>
-                    <span className="text-white/85">{formatBRL(valores.valor_multa)}</span>
+                    <span className={valores.multa_responsavel === "colaborador" ? "text-red-300" : "text-white/85"}>
+                      {formatBRL(valores.valor_multa)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-white/60">
                     <span>+ Acordo</span>

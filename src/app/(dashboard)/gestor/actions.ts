@@ -82,6 +82,7 @@ export async function registrarDesligamentoAction(formData: FormData) {
     dias_trabalhados: null,
     valor_multa: valorMulta,
     valor_acordo: valorAcordo,
+    multa_responsavel: temMulta ? multaResponsavel : null,
     informado_por: profile.id,
   });
 
