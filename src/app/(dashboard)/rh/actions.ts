@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { addBusinessDays } from "@/lib/utils";
-import { sendEmail, emailSolicitacaoAdvogado, emailDistratoAssinado } from "@/lib/email";
+import { sendEmail, emailSolicitacaoAdvogado, emailDistratoAssinado, emailSolicitarRevisaoDistrato } from "@/lib/email";
 
 export async function atualizarCpfAction(formData: FormData) {
   await requireRole(["rh", "admin"]);
@@ -211,15 +211,49 @@ export async function conferirDistratoAction(formData: FormData) {
       .from("documentos")
       .update({ status: "rejeitado", observacoes_conferencia: observacoes })
       .eq("id", documentoId);
-    // Reabre o link do advogado (sem expiração — só invalida quando usado)
-    await supabase
+
+    const { data: solicitacao } = await supabase
       .from("solicitacoes_advogado")
-      .update({ usado_em: null })
-      .eq("desligamento_id", desligamentoId);
+      .select("*")
+      .eq("desligamento_id", desligamentoId)
+      .order("solicitado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Reabre o link do advogado (sem expiração — só invalida quando usado)
+    if (solicitacao) {
+      await supabase
+        .from("solicitacoes_advogado")
+        .update({ usado_em: null })
+        .eq("id", solicitacao.id);
+    }
+
     await supabase
       .from("desligamentos")
       .update({ status: "aguardando_distrato" })
       .eq("id", desligamentoId);
+
+    if (solicitacao) {
+      const { data: desligamento } = await supabase
+        .from("desligamentos")
+        .select("*, colaborador:colaboradores(*)")
+        .eq("id", desligamentoId)
+        .single();
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      const link = `${baseUrl}/distrato/${solicitacao.token}`;
+
+      await sendEmail({
+        to: solicitacao.advogado_email,
+        subject: `Revisão solicitada no distrato — ${desligamento?.colaborador?.nome ?? "colaborador"}`,
+        html: emailSolicitarRevisaoDistrato({
+          advogadoNome: solicitacao.advogado_nome,
+          colaboradorNome: desligamento?.colaborador?.nome ?? "colaborador",
+          link,
+          observacoes,
+        }),
+      });
+    }
   }
 
   revalidatePath(`/rh/${desligamentoId}`);

@@ -139,6 +139,33 @@ export function emailSolicitacaoAdvogado(params: {
   `;
 }
 
+export function emailSolicitarRevisaoDistrato(params: {
+  advogadoNome: string;
+  colaboradorNome: string;
+  link: string;
+  observacoes: string | null;
+}) {
+  return `
+    <div style="font-family: Arial, sans-serif; color: #04133A; max-width: 560px;">
+      <h2 style="color:#0075ED;">Revisão solicitada no distrato</h2>
+      <p>Olá, ${params.advogadoNome}.</p>
+      <p>
+        O RH conferiu o distrato de <strong>${params.colaboradorNome}</strong> e solicitou uma revisão
+        antes de seguir para assinatura.
+      </p>
+      ${
+        params.observacoes
+          ? `<p><strong>O que precisa ser ajustado:</strong></p>
+             <p style="background:#FEF3C7;color:#92400E;padding:10px 14px;border-radius:8px;">${params.observacoes}</p>`
+          : `<p style="color:#667;">O RH não deixou um comentário específico — verifique o documento com atenção.</p>`
+      }
+      <p>Para anexar a versão revisada, acesse o mesmo link de sempre:</p>
+      <p><a href="${params.link}" style="background:#0075ED;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;">Anexar distrato revisado</a></p>
+      <p style="color:#667;font-size:12px;">Este link é de uso exclusivo para este caso e não expira por tempo.</p>
+    </div>
+  `;
+}
+
 export function emailDistratoAssinado(params: {
   advogadoNome: string;
   colaboradorNome: string;
