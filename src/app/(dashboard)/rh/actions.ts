@@ -121,11 +121,30 @@ export async function solicitarAdvogadoAction(formData: FormData) {
 
   const { data: desligamento } = await supabase
     .from("desligamentos")
-    .select("*, colaborador:colaboradores(*), acordo:acordos(*), valores:valores_financeiros(*)")
+    .select("*, colaborador:colaboradores(*)")
     .eq("id", desligamentoId)
     .single();
 
   if (!desligamento) throw new Error("Desligamento não encontrado.");
+
+  // Busca separada (em vez de embed) pra não depender de nenhuma inferência
+  // de relacionamento — mais direto e mais fácil de garantir que pega a
+  // linha certa.
+  const { data: acordo } = await supabase
+    .from("acordos")
+    .select("*")
+    .eq("desligamento_id", desligamentoId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: valores } = await supabase
+    .from("valores_financeiros")
+    .select("*")
+    .eq("desligamento_id", desligamentoId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const prazoLimite = addBusinessDays(new Date(), 2).toISOString().slice(0, 10);
 
@@ -137,15 +156,15 @@ export async function solicitarAdvogadoAction(formData: FormData) {
     data_conversa: desligamento.data_conversa,
     data_ultimo_dia_trabalhado: desligamento.data_ultimo_dia_trabalhado,
     motivo: desligamento.motivo,
-    condicoes: desligamento.acordo?.[0]?.condicoes ?? null,
-    tem_multa: desligamento.acordo?.[0]?.tem_multa ?? false,
-    multa_responsavel: desligamento.acordo?.[0]?.multa_responsavel ?? null,
-    tem_acordo: desligamento.acordo?.[0]?.tem_acordo ?? false,
-    salario_base: desligamento.valores?.[0]?.salario_base ?? null,
-    dias_trabalhados: desligamento.valores?.[0]?.dias_trabalhados ?? null,
-    valor_multa: desligamento.valores?.[0]?.valor_multa ?? null,
-    valor_acordo: desligamento.valores?.[0]?.valor_acordo ?? null,
-    valor_total: desligamento.valores?.[0]?.valor_total ?? null,
+    condicoes: acordo?.condicoes ?? null,
+    tem_multa: acordo?.tem_multa ?? false,
+    multa_responsavel: acordo?.multa_responsavel ?? null,
+    tem_acordo: acordo?.tem_acordo ?? false,
+    salario_base: valores?.salario_base != null ? Number(valores.salario_base) : null,
+    dias_trabalhados: valores?.dias_trabalhados != null ? Number(valores.dias_trabalhados) : null,
+    valor_multa: valores?.valor_multa != null ? Number(valores.valor_multa) : null,
+    valor_acordo: valores?.valor_acordo != null ? Number(valores.valor_acordo) : null,
+    valor_total: valores?.valor_total != null ? Number(valores.valor_total) : null,
   };
 
   const { data: solicitacao, error } = await supabase

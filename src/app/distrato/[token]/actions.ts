@@ -8,21 +8,59 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function buscarSolicitacaoPorToken(token: string) {
   const admin = createAdminClient();
-  const { data, error } = await admin
+
+  const { data: solicitacao, error } = await admin
     .from("solicitacoes_advogado")
-    .select(
-      `*, desligamento:desligamentos(
-        id, status, motivo, data_conversa, data_ultimo_dia_trabalhado,
-        colaborador:colaboradores(nome, cargo, cpf, tipo_vinculo),
-        acordo:acordos(tem_multa, multa_responsavel, tem_acordo, condicoes),
-        valores:valores_financeiros(salario_base, dias_trabalhados, valor_multa, valor_acordo, valor_total)
-      )`
-    )
+    .select("*")
     .eq("token", token)
     .single();
 
-  if (error || !data) return null;
-  return data;
+  if (error || !solicitacao) return null;
+
+  const { data: desligamento } = await admin
+    .from("desligamentos")
+    .select("id, status, motivo, data_conversa, data_ultimo_dia_trabalhado, colaborador_id")
+    .eq("id", solicitacao.desligamento_id)
+    .maybeSingle();
+
+  const { data: colaborador } = desligamento
+    ? await admin
+        .from("colaboradores")
+        .select("nome, cargo, cpf, tipo_vinculo")
+        .eq("id", desligamento.colaborador_id)
+        .maybeSingle()
+    : { data: null };
+
+  const { data: acordo } = await admin
+    .from("acordos")
+    .select("tem_multa, multa_responsavel, tem_acordo, condicoes")
+    .eq("desligamento_id", solicitacao.desligamento_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: valoresRaw } = await admin
+    .from("valores_financeiros")
+    .select("salario_base, dias_trabalhados, valor_multa, valor_acordo, valor_total")
+    .eq("desligamento_id", solicitacao.desligamento_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const valores = valoresRaw
+    ? {
+        salario_base: valoresRaw.salario_base != null ? Number(valoresRaw.salario_base) : null,
+        dias_trabalhados: valoresRaw.dias_trabalhados != null ? Number(valoresRaw.dias_trabalhados) : null,
+        valor_multa: valoresRaw.valor_multa != null ? Number(valoresRaw.valor_multa) : null,
+        valor_acordo: valoresRaw.valor_acordo != null ? Number(valoresRaw.valor_acordo) : null,
+        valor_total: valoresRaw.valor_total != null ? Number(valoresRaw.valor_total) : null,
+      }
+    : null;
+
+  return {
+    ...solicitacao,
+    desligamento: desligamento ? { ...desligamento, colaborador, acordo: acordo ? [acordo] : [], valores: valores ? [valores] : [] } : null,
+  };
 }
 
 export async function enviarDistratoAction(formData: FormData) {
