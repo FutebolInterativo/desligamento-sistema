@@ -15,7 +15,6 @@ import type {
   Acordo,
   ValoresFinanceiros,
   SolicitacaoAdvogado,
-  SolicitacaoNf,
   DocumentoRow,
   Procedimentos,
   Pagamento,
@@ -26,7 +25,7 @@ import {
   conferirDistratoAction,
   uploadDistratoAssinadoAction,
   atualizarProcedimentosAction,
-  gerarLinkNfAction,
+  anexarNfAction,
   cancelarDesligamentoAction,
   atualizarCpfAction,
   enviarDistratoAdvogadoAction,
@@ -45,7 +44,7 @@ export default async function DesligamentoDetalhePage({
     .from("desligamentos")
     .select(
       `*, colaborador:colaboradores(*), acordo:acordos(*), valores:valores_financeiros(*),
-       solicitacoes:solicitacoes_advogado(*), solicitacoes_nf(*), documentos(*), procedimentos(*), pagamento:pagamentos(*)`
+       solicitacoes:solicitacoes_advogado(*), documentos(*), procedimentos(*), pagamento:pagamentos(*)`
     )
     .eq("id", id)
     .single();
@@ -59,7 +58,6 @@ export default async function DesligamentoDetalhePage({
     acordo: Acordo[];
     valores: ValoresFinanceiros | null;
     solicitacoes: SolicitacaoAdvogado[];
-    solicitacoes_nf: SolicitacaoNf[];
     documentos: DocumentoRow[];
     procedimentos: Procedimentos | null;
     pagamento: Pagamento | null;
@@ -70,15 +68,15 @@ export default async function DesligamentoDetalhePage({
   const solicitacao = desligamento.solicitacoes?.sort((a, b) =>
     b.solicitado_em.localeCompare(a.solicitado_em)
   )?.[0];
-  const solicitacaoNf = desligamento.solicitacoes_nf?.sort((a, b) =>
-    b.solicitado_em.localeCompare(a.solicitado_em)
-  )?.[0];
   const minuta = desligamento.documentos?.find((d) => d.tipo === "minuta_distrato");
   const distratoAssinado = desligamento.documentos?.find((d) => d.tipo === "distrato_assinado");
+  const notaFiscalDoc = desligamento.documentos?.find((d) => d.tipo === "nota_fiscal");
   const procedimentos = desligamento.procedimentos;
   const pagamento = desligamento.pagamento;
 
   const status = desligamento.status;
+
+  const notaFiscalUrl = notaFiscalDoc ? await getSignedUrl(notaFiscalDoc.arquivo_path) : null;
 
   const minutaUrl = minuta ? await getSignedUrl(minuta.arquivo_path) : null;
   const distratoAssinadoUrl = distratoAssinado ? await getSignedUrl(distratoAssinado.arquivo_path) : null;
@@ -436,34 +434,46 @@ export default async function DesligamentoDetalhePage({
               {pagamento.nf_necessaria ? "Sim" : "Não"}
             </p>
             {pagamento.nf_necessaria && !pagamento.nf_emitida && (
-              <div className="space-y-2 rounded-lg border border-white/10 bg-[var(--midnight)]/40 p-3">
+              <div className="space-y-3 rounded-lg border border-white/10 bg-[var(--midnight)]/40 p-3">
                 <p className="text-white/60">
-                  A emissão da NF é feita pelo colaborador, através de um link único. Copie e envie
-                  para ele pelo canal que preferir (e-mail, WhatsApp etc.).
+                  Este caso exige NF (vínculo PJ). O colaborador deve enviar o arquivo diretamente
+                  para o RH (e-mail, WhatsApp etc.) — o RH anexa aqui para dar prosseguimento.
                 </p>
-                {solicitacaoNf ? (
-                  <p>
-                    <span className="text-white/40">Link: </span>
-                    <span className="font-mono-label text-xs text-white/50">
-                      /nota-fiscal/{solicitacaoNf.token}
-                    </span>
-                  </p>
-                ) : (
-                  <p className="text-white/40">Nenhum link gerado ainda.</p>
-                )}
-                <form action={gerarLinkNfAction}>
+                <form action={anexarNfAction} className="space-y-3">
                   <input type="hidden" name="desligamento_id" value={desligamento.id} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Número da NF">
+                      <Input name="nf_numero" required placeholder="Ex.: 0001" />
+                    </Field>
+                    <Field label="Arquivo (PDF)">
+                      <Input type="file" name="arquivo" accept="application/pdf" required />
+                    </Field>
+                  </div>
                   <Button type="submit" size="sm" variant="secondary">
-                    {solicitacaoNf ? "Gerar novo link" : "Gerar link para o colaborador"}
+                    <Upload size={14} />
+                    Anexar NF recebida
                   </Button>
                 </form>
               </div>
             )}
             {pagamento.nf_necessaria && pagamento.nf_emitida && (
-              <p>
-                <span className="text-white/40">NF: </span>
-                Recebida ({pagamento.nf_numero})
-              </p>
+              <div className="flex items-center justify-between">
+                <p>
+                  <span className="text-white/40">NF: </span>
+                  Recebida ({pagamento.nf_numero})
+                </p>
+                {notaFiscalUrl && (
+                  <a
+                    href={notaFiscalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[var(--blue-400)] hover:underline"
+                  >
+                    <FileText size={14} />
+                    Ver arquivo
+                  </a>
+                )}
+              </div>
             )}
             <p>
               <span className="text-white/40">Status: </span>

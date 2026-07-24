@@ -121,11 +121,19 @@ export async function solicitarAdvogadoAction(formData: FormData) {
   const dadosEnviados = {
     colaborador: desligamento.colaborador?.nome,
     cargo: desligamento.colaborador?.cargo,
+    cpf: desligamento.colaborador?.cpf,
+    tipo_vinculo: desligamento.colaborador?.tipo_vinculo,
+    data_conversa: desligamento.data_conversa,
+    data_ultimo_dia_trabalhado: desligamento.data_ultimo_dia_trabalhado,
     motivo: desligamento.motivo,
     condicoes: desligamento.acordo?.[0]?.condicoes ?? null,
     tem_multa: desligamento.acordo?.[0]?.tem_multa ?? false,
     multa_responsavel: desligamento.acordo?.[0]?.multa_responsavel ?? null,
     tem_acordo: desligamento.acordo?.[0]?.tem_acordo ?? false,
+    salario_base: desligamento.valores?.[0]?.salario_base ?? null,
+    dias_trabalhados: desligamento.valores?.[0]?.dias_trabalhados ?? null,
+    valor_multa: desligamento.valores?.[0]?.valor_multa ?? null,
+    valor_acordo: desligamento.valores?.[0]?.valor_acordo ?? null,
     valor_total: desligamento.valores?.[0]?.valor_total ?? null,
   };
 
@@ -158,14 +166,10 @@ export async function solicitarAdvogadoAction(formData: FormData) {
     subject: `Solicitação de distrato — ${dadosEnviados.colaborador}`,
     html: emailSolicitacaoAdvogado({
       advogadoNome,
-      colaboradorNome: dadosEnviados.colaborador ?? "colaborador",
       link,
-      condicoes: dadosEnviados.condicoes,
-      temMulta: dadosEnviados.tem_multa,
-      multaResponsavel: dadosEnviados.multa_responsavel,
-      temAcordo: dadosEnviados.tem_acordo,
-      valorTotal: dadosEnviados.valor_total,
       prazoLimite,
+      observacoes,
+      dados: dadosEnviados,
     }),
   });
 
@@ -299,32 +303,37 @@ export async function atualizarProcedimentosAction(formData: FormData) {
   revalidatePath(`/rh/${desligamentoId}`);
 }
 
-export async function gerarLinkNfAction(formData: FormData) {
-  await requireRole(["rh", "admin"]);
+export async function anexarNfAction(formData: FormData) {
+  const profile = await requireRole(["rh", "admin"]);
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const desligamentoId = String(formData.get("desligamento_id"));
+  const nfNumero = String(formData.get("nf_numero") ?? "").trim() || null;
+  const file = formData.get("arquivo") as File | null;
+  if (!file || file.size === 0) throw new Error("Selecione o arquivo da nota fiscal.");
+  if (!nfNumero) throw new Error("Informe o número da nota fiscal.");
 
-  const { data: desligamento } = await supabase
-    .from("desligamentos")
-    .select("*, colaborador:colaboradores(*), valores:valores_financeiros(*)")
-    .eq("id", desligamentoId)
-    .single();
+  const path = `${desligamentoId}/nota-fiscal-${Date.now()}.pdf`;
+  const { error: uploadError } = await admin.storage
+    .from("distratos")
+    .upload(path, file, { contentType: "application/pdf" });
+  if (uploadError) throw new Error(uploadError.message);
 
-  if (!desligamento) throw new Error("Desligamento não encontrado.");
-
-  const dadosEnviados = {
-    colaborador: desligamento.colaborador?.nome,
-    valor_total: desligamento.valores?.[0]?.valor_total ?? null,
-  };
-
-  const { error } = await supabase.from("solicitacoes_nf").insert({
+  const { error: docError } = await supabase.from("documentos").insert({
     desligamento_id: desligamentoId,
-    colaborador_email: desligamento.colaborador?.email ?? "",
-    dados_enviados: dadosEnviados,
+    tipo: "nota_fiscal",
+    arquivo_path: path,
+    status: "aprovado",
+    uploaded_by: profile.id,
   });
+  if (docError) throw new Error(docError.message);
 
-  if (error) throw new Error(error.message);
+  const { error: pagamentoError } = await supabase
+    .from("pagamentos")
+    .update({ nf_emitida: true, nf_numero: nfNumero })
+    .eq("desligamento_id", desligamentoId);
+  if (pagamentoError) throw new Error(pagamentoError.message);
 
   revalidatePath(`/rh/${desligamentoId}`);
   revalidatePath(`/financeiro/${desligamentoId}`);

@@ -15,7 +15,6 @@ import type {
   Acordo,
   ValoresFinanceiros,
   SolicitacaoAdvogado,
-  SolicitacaoNf,
   DocumentoRow,
   Procedimentos,
   Pagamento,
@@ -43,7 +42,7 @@ export default async function FinanceiroDetalhePage({
     .from("desligamentos")
     .select(
       `*, colaborador:colaboradores(*), acordo:acordos(*), valores:valores_financeiros(*),
-       solicitacoes_advogado(*), solicitacoes_nf(*), pagamento:pagamentos(*), documentos(*),
+       solicitacoes_advogado(*), pagamento:pagamentos(*), documentos(*),
        procedimentos(*), parcelas_pagamento(*)`
     )
     .eq("id", id)
@@ -56,7 +55,6 @@ export default async function FinanceiroDetalhePage({
     acordo: Acordo[];
     valores: ValoresFinanceiros | null;
     solicitacoes_advogado: SolicitacaoAdvogado[];
-    solicitacoes_nf: SolicitacaoNf[];
     pagamento: Pagamento | null;
     documentos: DocumentoRow[];
     procedimentos: Procedimentos | null;
@@ -68,9 +66,6 @@ export default async function FinanceiroDetalhePage({
   const pagamento = desligamento.pagamento;
   const procedimentos = desligamento.procedimentos;
   const solicitacaoAdvogado = desligamento.solicitacoes_advogado?.sort((a, b) =>
-    b.solicitado_em.localeCompare(a.solicitado_em)
-  )?.[0];
-  const solicitacaoNf = desligamento.solicitacoes_nf?.sort((a, b) =>
     b.solicitado_em.localeCompare(a.solicitado_em)
   )?.[0];
 
@@ -297,7 +292,7 @@ export default async function FinanceiroDetalhePage({
         </Card>
       )}
 
-      {/* Editável: NF (sempre emitida pelo colaborador, via link) e pagamento */}
+      {/* Leitura: NF (anexada pelo RH, recebida do colaborador fora do sistema) e pagamento */}
       {pagamento && (
         <Card className="mb-5">
           <CardHeader>
@@ -310,9 +305,8 @@ export default async function FinanceiroDetalhePage({
 
             {pagamento.nf_necessaria && !pagamento.nf_emitida && (
               <p className="text-sm text-white/60 border-t border-white/[0.06] pt-4">
-                Este caso exige NF. A emissão é feita pelo colaborador, através de um link que o RH
-                envia diretamente para ele.
-                {solicitacaoNf && " Link já foi gerado — aguardando o colaborador enviar."}
+                Este caso exige NF. O colaborador envia o arquivo diretamente ao RH, que anexa no
+                sistema — aguardando.
               </p>
             )}
 

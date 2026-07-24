@@ -3,8 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { registrarDesligamentoAction } from "../actions";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Input, Textarea, Checkbox, Select } from "@/components/ui/form";
+import { Field, Input, Textarea, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { CondicoesAcordadasFields } from "./condicoes-acordadas-fields";
 
 export default async function NovoDesligamentoPage() {
   await requireRole(["gestor", "admin"]);
@@ -75,26 +76,7 @@ export default async function NovoDesligamentoPage() {
             <CardTitle>Condições acordadas</CardTitle>
           </CardHeader>
           <CardBody className="space-y-4">
-            <div className="flex gap-6">
-              <Checkbox name="tem_multa" label="Há multa envolvida" />
-              <Checkbox name="tem_acordo" label="Há acordo específico" />
-            </div>
-            <Field
-              label="Quem paga a multa"
-              hint="Preencha somente se houver multa envolvida"
-            >
-              <Select name="multa_responsavel" defaultValue="">
-                <option value="">Não se aplica</option>
-                <option value="colaborador">Colaborador paga a multa</option>
-                <option value="empresa">FI paga a multa</option>
-              </Select>
-            </Field>
-            <Field label="Descrição das condições" hint="O que foi acordado entre gestor e colaborador">
-              <Textarea
-                name="condicoes"
-                placeholder="Descreva livremente o que foi combinado na conversa"
-              />
-            </Field>
+            <CondicoesAcordadasFields />
           </CardBody>
         </Card>
 

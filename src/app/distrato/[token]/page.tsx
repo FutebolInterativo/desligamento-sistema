@@ -29,12 +29,28 @@ export default async function DistratoTokenPage({
   const dados = solicitacao.dados_enviados as {
     colaborador?: string;
     cargo?: string;
+    cpf?: string | null;
+    tipo_vinculo?: string | null;
+    data_conversa?: string | null;
+    data_ultimo_dia_trabalhado?: string | null;
+    motivo?: string | null;
     condicoes?: string | null;
     tem_multa?: boolean;
     multa_responsavel?: "colaborador" | "empresa" | null;
     tem_acordo?: boolean;
+    salario_base?: number | null;
+    dias_trabalhados?: number | null;
+    valor_multa?: number | null;
+    valor_acordo?: number | null;
     valor_total?: number | null;
   } | null;
+
+  const TIPO_VINCULO_LABEL: Record<string, string> = {
+    clt: "CLT",
+    pj: "PJ",
+    estagio: "Estágio",
+    outro: "Outro",
+  };
 
   const jaEnviado = Boolean(solicitacao.usado_em);
 
@@ -62,6 +78,32 @@ export default async function DistratoTokenPage({
               <span className="text-white/40">Colaborador: </span>
               {dados?.colaborador} {dados?.cargo ? `— ${dados.cargo}` : ""}
             </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-white/70">
+              <p>
+                <span className="text-white/40">CPF: </span>
+                {dados?.cpf ?? "não informado"}
+              </p>
+              <p>
+                <span className="text-white/40">Vínculo: </span>
+                {dados?.tipo_vinculo
+                  ? TIPO_VINCULO_LABEL[dados.tipo_vinculo] ?? dados.tipo_vinculo
+                  : "—"}
+              </p>
+              <p>
+                <span className="text-white/40">Conversa em: </span>
+                {formatDate(dados?.data_conversa)}
+              </p>
+              <p>
+                <span className="text-white/40">Último dia trabalhado: </span>
+                {formatDate(dados?.data_ultimo_dia_trabalhado)}
+              </p>
+            </div>
+            {dados?.motivo && (
+              <p className="text-white/70">
+                <span className="text-white/40">Motivo do desligamento: </span>
+                {dados.motivo}
+              </p>
+            )}
             <div className="flex gap-2">
               <Pill tone={dados?.tem_multa ? "warn" : "neutral"}>
                 {dados?.tem_multa ? "Com multa" : "Sem multa"}
@@ -83,10 +125,37 @@ export default async function DistratoTokenPage({
               </div>
             )}
             {dados?.condicoes && <p className="text-white/70">{dados.condicoes}</p>}
-            <p className="text-white/70">
-              <span className="text-white/40">Valor total apurado: </span>
-              {dados?.valor_total != null ? formatBRL(dados.valor_total) : "a definir pelo financeiro"}
-            </p>
+
+            <div className="rounded-lg border border-white/10 bg-[var(--midnight)]/40 p-3">
+              <p className="mb-1.5 text-xs font-mono-label text-white/40">Valores</p>
+              {dados?.salario_base != null ? (
+                <div className="space-y-1 text-white/70">
+                  <p>
+                    <span className="text-white/40">Salário base: </span>
+                    {formatBRL(dados.salario_base)}
+                  </p>
+                  <p>
+                    <span className="text-white/40">Dias trabalhados: </span>
+                    {dados.dias_trabalhados}
+                  </p>
+                  <p>
+                    <span className="text-white/40">Valor de multa: </span>
+                    {formatBRL(dados.valor_multa)}
+                  </p>
+                  <p>
+                    <span className="text-white/40">Valor de acordo: </span>
+                    {formatBRL(dados.valor_acordo)}
+                  </p>
+                  <p className="pt-1 text-[var(--blue-400)]">
+                    <span className="text-white/40">Valor total apurado: </span>
+                    {formatBRL(dados.valor_total)}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-white/40">Ainda não apurados pelo financeiro.</p>
+              )}
+            </div>
+
             {solicitacao.prazo_limite && (
               <p className="text-xs text-white/35">
                 Prazo estimado: {formatDate(solicitacao.prazo_limite)}

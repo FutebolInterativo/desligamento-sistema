@@ -40,22 +40,6 @@ export async function salvarValoresAction(formData: FormData) {
   revalidatePath("/financeiro");
 }
 
-export async function marcarNfEmitidaAction(formData: FormData) {
-  await requireRole(["financeiro", "admin"]);
-  const supabase = await createClient();
-
-  const desligamentoId = String(formData.get("desligamento_id"));
-  const nfNumero = String(formData.get("nf_numero") ?? "").trim() || null;
-
-  const { error } = await supabase
-    .from("pagamentos")
-    .update({ nf_emitida: true, nf_numero: nfNumero })
-    .eq("desligamento_id", desligamentoId);
-  if (error) throw new Error(error.message);
-
-  revalidatePath(`/financeiro/${desligamentoId}`);
-}
-
 export async function registrarParcelaAction(
   _prevState: { ok: boolean; message: string } | null,
   formData: FormData
