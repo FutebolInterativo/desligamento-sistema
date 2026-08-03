@@ -20,7 +20,6 @@ import type {
   Pagamento,
 } from "@/lib/types";
 import {
-  atualizarDiasTrabalhadosAction,
   solicitarAdvogadoAction,
   conferirDistratoAction,
   uploadDistratoAssinadoAction,
@@ -169,59 +168,45 @@ export default async function DesligamentoDetalhePage({
         </CardBody>
       </Card>
 
-      {/* Valores financeiros — preenchidos pelo gestor; RH só completa os dias trabalhados */}
+      {/* Valores financeiros — preenchidos pelo gestor, incluindo dias úteis/trabalhados */}
       <Card className="mb-5">
         <CardHeader>
           <CardTitle>Valores</CardTitle>
         </CardHeader>
         <CardBody className="text-sm">
           {valores ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                <div>
-                  <p className="text-white/40 text-xs">Salário base</p>
-                  <p className="text-white/85">{formatBRL(valores.salario_base)}</p>
-                </div>
-                <div>
-                  <p className="text-white/40 text-xs">Dias trabalhados</p>
-                  <p className="text-white/85">{valores.dias_trabalhados ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-white/40 text-xs">
-                    Multa {valores.multa_responsavel === "colaborador" ? "(desconto)" : ""}
-                  </p>
-                  <p className={valores.multa_responsavel === "colaborador" ? "text-red-300" : "text-white/85"}>
-                    {valores.multa_responsavel === "colaborador" ? "− " : ""}
-                    {formatBRL(valores.valor_multa)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-white/40 text-xs">Acordo</p>
-                  <p className="text-white/85">{formatBRL(valores.valor_acordo)}</p>
-                </div>
-                <div>
-                  <p className="text-white/40 text-xs">Valor total</p>
-                  <p className="font-display text-[var(--blue-400)]">
-                    {valores.valor_total != null ? formatBRL(valores.valor_total) : "a calcular"}
-                  </p>
-                </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <div>
+                <p className="text-white/40 text-xs">Salário base</p>
+                <p className="text-white/85">{formatBRL(valores.salario_base)}</p>
               </div>
-              {valores.dias_trabalhados == null && (
-                <form
-                  action={atualizarDiasTrabalhadosAction}
-                  className="flex items-end gap-3 border-t border-white/[0.06] pt-4"
-                >
-                  <input type="hidden" name="desligamento_id" value={desligamento.id} />
-                  <div className="w-40">
-                    <Field label="Dias trabalhados no mês" hint="Necessário pra fechar o valor total">
-                      <Input type="number" name="dias_trabalhados" min="0" max="31" required />
-                    </Field>
-                  </div>
-                  <Button type="submit" size="sm" variant="secondary">
-                    Salvar
-                  </Button>
-                </form>
-              )}
+              <div>
+                <p className="text-white/40 text-xs">Dias úteis no mês</p>
+                <p className="text-white/85">{valores.dias_uteis_mes ?? "a confirmar pelo gestor"}</p>
+              </div>
+              <div>
+                <p className="text-white/40 text-xs">Dias trabalhados</p>
+                <p className="text-white/85">{valores.dias_trabalhados ?? "a confirmar pelo gestor"}</p>
+              </div>
+              <div>
+                <p className="text-white/40 text-xs">
+                  Multa {valores.multa_responsavel === "colaborador" ? "(desconto)" : ""}
+                </p>
+                <p className={valores.multa_responsavel === "colaborador" ? "text-red-300" : "text-white/85"}>
+                  {valores.multa_responsavel === "colaborador" ? "− " : ""}
+                  {formatBRL(valores.valor_multa)}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/40 text-xs">Acordo</p>
+                <p className="text-white/85">{formatBRL(valores.valor_acordo)}</p>
+              </div>
+              <div>
+                <p className="text-white/40 text-xs">Valor total</p>
+                <p className="font-display text-[var(--blue-400)]">
+                  {valores.valor_total != null ? formatBRL(valores.valor_total) : "a calcular"}
+                </p>
+              </div>
             </div>
           ) : (
             <p className="text-white/40">Nenhum valor informado pelo gestor.</p>

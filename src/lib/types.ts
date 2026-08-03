@@ -75,6 +75,7 @@ export interface ValoresFinanceiros {
   desligamento_id: string;
   salario_base: number;
   dias_trabalhados: number | null;
+  dias_uteis_mes: number | null;
   valor_multa: number;
   valor_acordo: number;
   multa_responsavel: "colaborador" | "empresa" | null;

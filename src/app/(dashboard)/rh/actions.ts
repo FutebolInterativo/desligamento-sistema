@@ -88,28 +88,6 @@ export async function enviarDistratoAdvogadoAction(formData: FormData) {
   revalidatePath(`/rh/${desligamentoId}`);
 }
 
-export async function atualizarDiasTrabalhadosAction(formData: FormData) {
-  await requireRole(["rh", "admin"]);
-  const supabase = await createClient();
-
-  const desligamentoId = String(formData.get("desligamento_id"));
-  const diasTrabalhados = Number(formData.get("dias_trabalhados"));
-
-  if (!diasTrabalhados || diasTrabalhados <= 0) {
-    throw new Error("Informe um número válido de dias trabalhados.");
-  }
-
-  const { error } = await supabase
-    .from("valores_financeiros")
-    .update({ dias_trabalhados: diasTrabalhados })
-    .eq("desligamento_id", desligamentoId);
-  if (error) throw new Error(error.message);
-
-  revalidatePath(`/rh/${desligamentoId}`);
-  revalidatePath(`/financeiro/${desligamentoId}`);
-  revalidatePath(`/gestor/${desligamentoId}`);
-}
-
 export async function solicitarAdvogadoAction(formData: FormData) {
   const profile = await requireRole(["rh", "admin"]);
   const supabase = await createClient();

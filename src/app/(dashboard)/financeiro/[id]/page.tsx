@@ -138,7 +138,7 @@ export default async function FinanceiroDetalhePage({
         </CardBody>
       </Card>
 
-      {/* Leitura: valores (preenchidos pelo gestor + dias trabalhados pelo RH) */}
+      {/* Leitura: valores (preenchidos pelo gestor, incluindo dias úteis/trabalhados) */}
       <Card className="mb-5">
         <CardHeader>
           <CardTitle>Valores do desligamento</CardTitle>
@@ -146,10 +146,14 @@ export default async function FinanceiroDetalhePage({
         <CardBody className="text-sm">
           {valores ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <div>
                   <p className="text-white/40 text-xs">Salário base</p>
                   <p className="text-white/85">{formatBRL(valores.salario_base)}</p>
+                </div>
+                <div>
+                  <p className="text-white/40 text-xs">Dias úteis no mês</p>
+                  <p className="text-white/85">{valores.dias_uteis_mes ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-white/40 text-xs">Dias trabalhados</p>
@@ -170,12 +174,14 @@ export default async function FinanceiroDetalhePage({
                   <p className="mb-1 text-xs font-mono-label text-white/40">Como o valor é calculado</p>
                   <div className="flex items-center justify-between text-white/60">
                     <span>
-                      Proporcional (salário ÷ 30 × dias trabalhados) — {formatBRL(valores.salario_base)} ÷ 30
-                      × {valores.dias_trabalhados}
+                      Proporcional (salário ÷ dias úteis × dias trabalhados) — {formatBRL(valores.salario_base)} ÷{" "}
+                      {valores.dias_uteis_mes ?? 30} × {valores.dias_trabalhados}
                     </span>
                     <span className="text-white/85">
                       {formatBRL(
-                        Math.round((valores.salario_base / 30) * valores.dias_trabalhados * 100) / 100
+                        Math.round(
+                          (valores.salario_base / (valores.dias_uteis_mes ?? 30)) * valores.dias_trabalhados * 100
+                        ) / 100
                       )}
                     </span>
                   </div>
@@ -204,7 +210,7 @@ export default async function FinanceiroDetalhePage({
                 </div>
               ) : (
                 <p className="text-xs text-amber-300">
-                  Aguardando o RH informar os dias trabalhados no mês para fechar o valor total.
+                  Aguardando o gestor informar os dias trabalhados no mês para fechar o valor total.
                 </p>
               )}
             </div>

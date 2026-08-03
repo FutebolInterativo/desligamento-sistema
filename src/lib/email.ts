@@ -116,7 +116,7 @@ export function emailSolicitacaoAdvogado(params: {
       <h3 style="color:#0075ED;font-size:14px;margin-bottom:4px;">Valores</h3>
       <ul style="margin-top:4px;">
         <li><strong>Salário base:</strong> ${d.salario_base != null ? formatBRL(d.salario_base) : "não informado pelo gestor"}</li>
-        <li><strong>Dias trabalhados no mês:</strong> ${d.dias_trabalhados ?? "a confirmar pelo RH"}</li>
+        <li><strong>Dias trabalhados no mês:</strong> ${d.dias_trabalhados ?? "a confirmar pelo gestor"}</li>
         <li><strong>Valor de multa:</strong> ${formatBRL(d.valor_multa ?? 0)}${
           d.tem_multa && d.multa_responsavel === "colaborador" ? " (descontado do valor do colaborador)" : ""
         }</li>

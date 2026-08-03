@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 
@@ -74,12 +75,13 @@ export async function registrarDesligamentoAction(formData: FormData) {
     throw new Error(acordoError.message);
   }
 
-  // Dias trabalhados ainda não são conhecidos — o RH completa isso mais
-  // tarde, quando o último dia efetivamente acontece.
+  // Dias úteis/trabalhados ainda não são conhecidos — o próprio Gestor
+  // completa isso mais tarde, quando o último dia efetivamente acontece.
   const { error: valoresError } = await supabase.from("valores_financeiros").insert({
     desligamento_id: desligamento.id,
     salario_base: salarioBase,
     dias_trabalhados: null,
+    dias_uteis_mes: null,
     valor_multa: valorMulta,
     valor_acordo: valorAcordo,
     multa_responsavel: temMulta ? multaResponsavel : null,
@@ -91,4 +93,56 @@ export async function registrarDesligamentoAction(formData: FormData) {
   }
 
   redirect("/gestor");
+}
+
+// Antes, os "dias trabalhados no mês" eram completados pelo RH (só se sabia
+// esse número quando o último dia efetivamente acontecia). Agora isso passa
+// a ser responsabilidade do Gestor, junto com um novo campo: os "dias úteis
+// no mês" — necessário pra dar contexto ao número de dias trabalhados.
+export async function atualizarDiasAction(formData: FormData) {
+  const profile = await requireRole(["gestor", "rh", "admin"]);
+  const supabase = await createClient();
+
+  const desligamentoId = String(formData.get("desligamento_id") ?? "");
+  const diasUteisMes = Number(formData.get("dias_uteis_mes"));
+  const diasTrabalhados = Number(formData.get("dias_trabalhados"));
+
+  if (!desligamentoId) {
+    throw new Error("Desligamento não informado.");
+  }
+
+  if (!diasUteisMes || diasUteisMes <= 0 || diasUteisMes > 31) {
+    throw new Error("Informe um número válido de dias úteis no mês.");
+  }
+
+  if (!diasTrabalhados || diasTrabalhados <= 0 || diasTrabalhados > 31) {
+    throw new Error("Informe um número válido de dias trabalhados.");
+  }
+
+  if (diasTrabalhados > diasUteisMes) {
+    throw new Error("Dias trabalhados não pode ser maior que dias úteis no mês.");
+  }
+
+  // Confirma que o gestor é dono do caso antes de tentar escrever — a RLS já
+  // bloqueia no banco, mas aqui dá um erro mais claro em vez de um 403 seco.
+  if (profile.role === "gestor") {
+    const { data: desligamento } = await supabase
+      .from("desligamentos")
+      .select("gestor_id")
+      .eq("id", desligamentoId)
+      .single();
+    if (!desligamento || desligamento.gestor_id !== profile.id) {
+      throw new Error("Você não tem permissão para editar este desligamento.");
+    }
+  }
+
+  const { error } = await supabase
+    .from("valores_financeiros")
+    .update({ dias_uteis_mes: diasUteisMes, dias_trabalhados: diasTrabalhados })
+    .eq("desligamento_id", desligamentoId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/gestor/${desligamentoId}`);
+  revalidatePath(`/rh/${desligamentoId}`);
+  revalidatePath(`/financeiro/${desligamentoId}`);
 }
