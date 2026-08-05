@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
+import { nomeColaboradorPorDesligamento, notificarPagamentoRegistrado } from "@/lib/slack";
 
 export async function registrarParcelaAction(
   _prevState: { ok: boolean; message: string } | null,
@@ -60,13 +61,22 @@ export async function registrarParcelaAction(
     .filter((p) => p.status === "pago")
     .reduce((acc, p) => acc + Number(p.valor), 0);
 
+  let concluido = false;
   if (valores && valores.valor_total != null && totalPago >= Number(valores.valor_total)) {
     await supabase
       .from("pagamentos")
       .update({ status: "pago", valor_pago: totalPago, data_realizado: dataRealizado })
       .eq("desligamento_id", desligamentoId);
     await supabase.from("desligamentos").update({ status: "pago" }).eq("id", desligamentoId);
+    concluido = true;
   }
+
+  await notificarPagamentoRegistrado({
+    colaboradorNome: await nomeColaboradorPorDesligamento(supabase, desligamentoId),
+    valor,
+    concluido,
+    desligamentoId,
+  });
 
   revalidatePath(`/financeiro/${desligamentoId}`);
   revalidatePath("/financeiro");

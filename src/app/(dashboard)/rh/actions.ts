@@ -7,6 +7,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
 import { addBusinessDays } from "@/lib/utils";
 import { sendEmail, emailSolicitacaoAdvogado, emailDistratoAssinado, emailSolicitarRevisaoDistrato } from "@/lib/email";
+import {
+  nomeColaboradorPorDesligamento,
+  notificarSolicitacaoAdvogado,
+  notificarDistratoAprovado,
+  notificarRevisaoSolicitada,
+  notificarDistratoAssinado,
+  notificarProcedimentosConcluidos,
+  notificarNfAnexada,
+  notificarCancelamento,
+} from "@/lib/slack";
 
 export async function atualizarCpfAction(formData: FormData) {
   await requireRole(["rh", "admin"]);
@@ -181,6 +191,12 @@ export async function solicitarAdvogadoAction(formData: FormData) {
     }),
   });
 
+  await notificarSolicitacaoAdvogado({
+    colaboradorNome: dadosEnviados.colaborador ?? "colaborador",
+    advogadoNome,
+    desligamentoId,
+  });
+
   void profile;
   revalidatePath(`/rh/${desligamentoId}`);
 }
@@ -246,6 +262,8 @@ export async function conferirDistratoAction(formData: FormData) {
   const decisao = String(formData.get("decisao")); // "aprovar" | "rejeitar"
   const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
 
+  const colaboradorNome = await nomeColaboradorPorDesligamento(supabase, desligamentoId);
+
   if (decisao === "aprovar") {
     await supabase
       .from("documentos")
@@ -255,6 +273,8 @@ export async function conferirDistratoAction(formData: FormData) {
       .from("desligamentos")
       .update({ status: "disponivel_assinatura" })
       .eq("id", desligamentoId);
+
+    await notificarDistratoAprovado({ colaboradorNome, desligamentoId });
   } else {
     await supabase
       .from("documentos")
@@ -303,6 +323,8 @@ export async function conferirDistratoAction(formData: FormData) {
         }),
       });
     }
+
+    await notificarRevisaoSolicitada({ colaboradorNome, desligamentoId });
   }
 
   revalidatePath(`/rh/${desligamentoId}`);
@@ -343,6 +365,11 @@ export async function uploadDistratoAssinadoAction(formData: FormData) {
     { onConflict: "desligamento_id", ignoreDuplicates: true }
   );
 
+  await notificarDistratoAssinado({
+    colaboradorNome: await nomeColaboradorPorDesligamento(supabase, desligamentoId),
+    desligamentoId,
+  });
+
   revalidatePath(`/rh/${desligamentoId}`);
 }
 
@@ -379,7 +406,7 @@ export async function atualizarProcedimentosAction(formData: FormData) {
     // NF só é exigida para vínculo PJ — CLT e Estágio não emitem nota.
     const { data: desligamento } = await supabase
       .from("desligamentos")
-      .select("colaborador:colaboradores(tipo_vinculo)")
+      .select("colaborador:colaboradores(nome, tipo_vinculo)")
       .eq("id", desligamentoId)
       .single();
     const colaboradorInfo = Array.isArray(desligamento?.colaborador)
@@ -392,6 +419,11 @@ export async function atualizarProcedimentosAction(formData: FormData) {
       { desligamento_id: desligamentoId, nf_necessaria: nfNecessaria, data_prevista: dataPrevista },
       { onConflict: "desligamento_id", ignoreDuplicates: true }
     );
+
+    await notificarProcedimentosConcluidos({
+      colaboradorNome: colaboradorInfo?.nome ?? "colaborador",
+      desligamentoId,
+    });
   }
 
   revalidatePath(`/rh/${desligamentoId}`);
@@ -429,6 +461,12 @@ export async function anexarNfAction(formData: FormData) {
     .eq("desligamento_id", desligamentoId);
   if (pagamentoError) throw new Error(pagamentoError.message);
 
+  await notificarNfAnexada({
+    colaboradorNome: await nomeColaboradorPorDesligamento(supabase, desligamentoId),
+    nfNumero,
+    desligamentoId,
+  });
+
   revalidatePath(`/rh/${desligamentoId}`);
   revalidatePath(`/financeiro/${desligamentoId}`);
 }
@@ -438,11 +476,15 @@ export async function cancelarDesligamentoAction(formData: FormData) {
   const supabase = await createClient();
   const desligamentoId = String(formData.get("desligamento_id"));
 
+  const colaboradorNome = await nomeColaboradorPorDesligamento(supabase, desligamentoId);
+
   const { error } = await supabase
     .from("desligamentos")
     .update({ status: "cancelado" })
     .eq("id", desligamentoId);
   if (error) throw new Error(error.message);
+
+  await notificarCancelamento({ colaboradorNome, desligamentoId });
 
   redirect("/rh");
 }

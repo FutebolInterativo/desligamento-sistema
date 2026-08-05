@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
+import { notificarNovoDesligamento } from "@/lib/slack";
 
 export async function registrarDesligamentoAction(formData: FormData) {
   const profile = await requireRole(["gestor", "rh", "admin"]);
@@ -91,6 +92,12 @@ export async function registrarDesligamentoAction(formData: FormData) {
   if (valoresError) {
     throw new Error(valoresError.message);
   }
+
+  await notificarNovoDesligamento({
+    colaboradorNome: nomeColaborador,
+    gestorNome: profile.nome,
+    desligamentoId: desligamento.id,
+  });
 
   redirect("/gestor");
 }

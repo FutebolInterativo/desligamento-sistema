@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notificarMinutaRecebida, nomeColaboradorPorDesligamento } from "@/lib/slack";
 
 // Rota sem autenticação Supabase — a única "senha" é o token na URL.
 // Por isso usamos exclusivamente a service role aqui, nunca a anon key,
@@ -123,6 +124,11 @@ export async function enviarDistratoAction(formData: FormData) {
     .from("desligamentos")
     .update({ status: "em_conferencia_rh" })
     .eq("id", solicitacao.desligamento_id);
+
+  await notificarMinutaRecebida({
+    colaboradorNome: await nomeColaboradorPorDesligamento(admin, solicitacao.desligamento_id),
+    desligamentoId: solicitacao.desligamento_id,
+  });
 
   return { ok: true as const, message: "Distrato enviado. O RH foi notificado para conferência." };
 }
