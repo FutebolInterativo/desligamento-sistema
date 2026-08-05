@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Send, FileCheck2, Upload, ClipboardCheck, Ban, FileText, IdCard, Mail, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Send, FileCheck2, Upload, ClipboardCheck, Ban, FileText, IdCard, Mail, AlertTriangle, RotateCw } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSignedUrl } from "@/lib/storage";
@@ -28,6 +28,7 @@ import {
   cancelarDesligamentoAction,
   atualizarCpfAction,
   enviarDistratoAdvogadoAction,
+  reenviarLembreteAdvogadoAction,
 } from "../actions";
 
 export default async function DesligamentoDetalhePage({
@@ -248,25 +249,43 @@ export default async function DesligamentoDetalhePage({
           <CardHeader>
             <CardTitle>Solicitação enviada</CardTitle>
           </CardHeader>
-          <CardBody className="space-y-1.5 text-sm text-white/70">
-            <p>
-              <span className="text-white/40">Advogado: </span>
-              {solicitacao.advogado_nome} · {solicitacao.advogado_email}
-            </p>
-            <p>
-              <span className="text-white/40">Enviada em: </span>
-              {formatDateTime(solicitacao.solicitado_em)}
-            </p>
-            <p>
-              <span className="text-white/40">Prazo estimado: </span>
-              {formatDate(solicitacao.prazo_limite)}
-            </p>
-            <p>
-              <span className="text-white/40">Link único: </span>
-              <span className="font-mono-label text-xs text-white/50">
-                /distrato/{solicitacao.token}
-              </span>
-            </p>
+          <CardBody className="space-y-3 text-sm text-white/70">
+            <div className="space-y-1.5">
+              <p>
+                <span className="text-white/40">Advogado: </span>
+                {solicitacao.advogado_nome} · {solicitacao.advogado_email}
+              </p>
+              <p>
+                <span className="text-white/40">Enviada em: </span>
+                {formatDateTime(solicitacao.solicitado_em)}
+              </p>
+              <p>
+                <span className="text-white/40">Prazo estimado: </span>
+                {formatDate(solicitacao.prazo_limite)}
+              </p>
+              <p>
+                <span className="text-white/40">Link único: </span>
+                <span className="font-mono-label text-xs text-white/50">
+                  /distrato/{solicitacao.token}
+                </span>
+              </p>
+            </div>
+            <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
+              {solicitacao.lembrete_enviado_em ? (
+                <span className="text-xs text-white/40">
+                  Último lembrete enviado em {formatDateTime(solicitacao.lembrete_enviado_em)}.
+                </span>
+              ) : (
+                <span className="text-xs text-white/40">Nenhum lembrete enviado ainda.</span>
+              )}
+              <form action={reenviarLembreteAdvogadoAction}>
+                <input type="hidden" name="desligamento_id" value={desligamento.id} />
+                <Button type="submit" size="sm" variant="secondary">
+                  <RotateCw size={14} />
+                  Reenviar e-mail
+                </Button>
+              </form>
+            </div>
           </CardBody>
         </Card>
       )}

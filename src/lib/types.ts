@@ -97,6 +97,7 @@ export interface SolicitacaoAdvogado {
   usado_em: string | null;
   observacoes: string | null;
   distrato_assinado_enviado_em: string | null;
+  lembrete_enviado_em: string | null;
 }
 
 export interface SolicitacaoNf {

@@ -185,6 +185,58 @@ export async function solicitarAdvogadoAction(formData: FormData) {
   revalidatePath(`/rh/${desligamentoId}`);
 }
 
+export async function reenviarLembreteAdvogadoAction(formData: FormData) {
+  await requireRole(["rh", "admin"]);
+  const supabase = await createClient();
+
+  const desligamentoId = String(formData.get("desligamento_id"));
+
+  const { data: desligamento } = await supabase
+    .from("desligamentos")
+    .select("*, colaborador:colaboradores(*)")
+    .eq("id", desligamentoId)
+    .single();
+  if (!desligamento) throw new Error("Desligamento não encontrado.");
+
+  const { data: solicitacao } = await supabase
+    .from("solicitacoes_advogado")
+    .select("*")
+    .eq("desligamento_id", desligamentoId)
+    .order("solicitado_em", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!solicitacao) {
+    throw new Error("Não há solicitação ao advogado registrada para este desligamento.");
+  }
+
+  // Reaproveita o mesmo token e os mesmos dados já enviados originalmente —
+  // só remonta o link com a URL base atual (útil se o domínio do app mudou
+  // depois do envio original) e reenvia o mesmo e-mail.
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const link = `${baseUrl}/distrato/${solicitacao.token}`;
+  const dadosEnviados = solicitacao.dados_enviados as Parameters<typeof emailSolicitacaoAdvogado>[0]["dados"];
+
+  await sendEmail({
+    to: solicitacao.advogado_email,
+    subject: `Lembrete: Solicitação de distrato — ${dadosEnviados?.colaborador ?? desligamento.colaborador?.nome ?? "colaborador"}`,
+    html: emailSolicitacaoAdvogado({
+      advogadoNome: solicitacao.advogado_nome,
+      link,
+      prazoLimite: solicitacao.prazo_limite,
+      observacoes: solicitacao.observacoes,
+      dados: dadosEnviados ?? {},
+    }),
+  });
+
+  const { error } = await supabase
+    .from("solicitacoes_advogado")
+    .update({ lembrete_enviado_em: new Date().toISOString() })
+    .eq("id", solicitacao.id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/rh/${desligamentoId}`);
+}
+
 export async function conferirDistratoAction(formData: FormData) {
   await requireRole(["rh", "admin"]);
   const supabase = await createClient();
