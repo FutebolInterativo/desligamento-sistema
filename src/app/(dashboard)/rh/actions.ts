@@ -101,11 +101,17 @@ export async function enviarDistratoAdvogadoAction(formData: FormData) {
 export async function solicitarAdvogadoAction(formData: FormData) {
   const profile = await requireRole(["rh", "admin"]);
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const desligamentoId = String(formData.get("desligamento_id"));
   const advogadoNome = String(formData.get("advogado_nome") ?? "").trim();
   const advogadoEmail = String(formData.get("advogado_email") ?? "").trim();
   const observacoes = String(formData.get("observacoes") ?? "").trim() || null;
+  const contratoAtual = formData.get("contrato_atual") as File | null;
+
+  if (!contratoAtual || contratoAtual.size === 0) {
+    throw new Error("Anexe o contrato atual do colaborador antes de enviar ao advogado.");
+  }
 
   const { data: desligamento } = await supabase
     .from("desligamentos")
@@ -155,6 +161,26 @@ export async function solicitarAdvogadoAction(formData: FormData) {
     valor_total: valores?.valor_total != null ? Number(valores.valor_total) : null,
   };
 
+  // Sobe o contrato atual e registra como documento do caso — fica
+  // disponível na tela do RH assim como os outros documentos (minuta,
+  // distrato assinado, NF).
+  const contratoPath = `${desligamentoId}/contrato-atual-${Date.now()}.pdf`;
+  const { error: uploadError } = await admin.storage
+    .from("distratos")
+    .upload(contratoPath, contratoAtual, { contentType: "application/pdf" });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { error: docError } = await supabase.from("documentos").insert({
+    desligamento_id: desligamentoId,
+    tipo: "contrato_atual",
+    arquivo_path: contratoPath,
+    status: "aprovado",
+    uploaded_by: profile.id,
+  });
+  if (docError) throw new Error(docError.message);
+
+  const contratoBuffer = Buffer.from(await contratoAtual.arrayBuffer());
+
   const { data: solicitacao, error } = await supabase
     .from("solicitacoes_advogado")
     .insert({
@@ -189,6 +215,9 @@ export async function solicitarAdvogadoAction(formData: FormData) {
       observacoes,
       dados: dadosEnviados,
     }),
+    attachments: [
+      { filename: "contrato-atual.pdf", content: contratoBuffer.toString("base64") },
+    ],
   });
 
   await notificarSolicitacaoAdvogado({
@@ -227,10 +256,31 @@ export async function reenviarLembreteAdvogadoAction(formData: FormData) {
 
   // Reaproveita o mesmo token e os mesmos dados já enviados originalmente —
   // só remonta o link com a URL base atual (útil se o domínio do app mudou
-  // depois do envio original) e reenvia o mesmo e-mail.
+  // depois do envio original) e reenvia o mesmo e-mail, com o contrato
+  // atual reanexado (se esse caso já tiver um — casos criados antes desta
+  // funcionalidade existir podem não ter).
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const link = `${baseUrl}/distrato/${solicitacao.token}`;
   const dadosEnviados = solicitacao.dados_enviados as Parameters<typeof emailSolicitacaoAdvogado>[0]["dados"];
+
+  const { data: contratoDoc } = await supabase
+    .from("documentos")
+    .select("arquivo_path")
+    .eq("desligamento_id", desligamentoId)
+    .eq("tipo", "contrato_atual")
+    .order("uploaded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let attachments: { filename: string; content: string }[] | undefined;
+  if (contratoDoc) {
+    const admin = createAdminClient();
+    const { data: fileBlob } = await admin.storage.from("distratos").download(contratoDoc.arquivo_path);
+    if (fileBlob) {
+      const buffer = Buffer.from(await fileBlob.arrayBuffer());
+      attachments = [{ filename: "contrato-atual.pdf", content: buffer.toString("base64") }];
+    }
+  }
 
   await sendEmail({
     to: solicitacao.advogado_email,
@@ -242,6 +292,7 @@ export async function reenviarLembreteAdvogadoAction(formData: FormData) {
       observacoes: solicitacao.observacoes,
       dados: dadosEnviados ?? {},
     }),
+    ...(attachments ? { attachments } : {}),
   });
 
   const { error } = await supabase

@@ -16,7 +16,7 @@ export type StatusDesligamento =
   | "pago"
   | "cancelado";
 
-export type TipoDocumento = "minuta_distrato" | "distrato_assinado" | "nota_fiscal";
+export type TipoDocumento = "contrato_atual" | "minuta_distrato" | "distrato_assinado" | "nota_fiscal";
 export type StatusDocumento = "pendente" | "em_conferencia" | "aprovado" | "rejeitado";
 export type TipoVinculo = "clt" | "pj" | "estagio";
 export type ResponsavelMulta = "colaborador" | "empresa";

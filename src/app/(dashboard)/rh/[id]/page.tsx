@@ -68,6 +68,7 @@ export default async function DesligamentoDetalhePage({
   const solicitacao = desligamento.solicitacoes?.sort((a, b) =>
     b.solicitado_em.localeCompare(a.solicitado_em)
   )?.[0];
+  const contratoAtual = desligamento.documentos?.find((d) => d.tipo === "contrato_atual");
   const minuta = desligamento.documentos?.find((d) => d.tipo === "minuta_distrato");
   const distratoAssinado = desligamento.documentos?.find((d) => d.tipo === "distrato_assinado");
   const notaFiscalDoc = desligamento.documentos?.find((d) => d.tipo === "nota_fiscal");
@@ -78,6 +79,7 @@ export default async function DesligamentoDetalhePage({
 
   const notaFiscalUrl = notaFiscalDoc ? await getSignedUrl(notaFiscalDoc.arquivo_path) : null;
 
+  const contratoAtualUrl = contratoAtual ? await getSignedUrl(contratoAtual.arquivo_path) : null;
   const minutaUrl = minuta ? await getSignedUrl(minuta.arquivo_path) : null;
   const distratoAssinadoUrl = distratoAssinado ? await getSignedUrl(distratoAssinado.arquivo_path) : null;
 
@@ -224,6 +226,9 @@ export default async function DesligamentoDetalhePage({
           <CardBody>
             <form action={solicitarAdvogadoAction} className="space-y-4">
               <input type="hidden" name="desligamento_id" value={desligamento.id} />
+              <Field label="Contrato atual do colaborador" hint="PDF — será anexado no e-mail enviado ao advogado">
+                <Input type="file" name="contrato_atual" accept="application/pdf" required />
+              </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Nome do advogado">
                   <Input name="advogado_nome" required placeholder="Nome completo" />
@@ -240,6 +245,25 @@ export default async function DesligamentoDetalhePage({
                 Enviar solicitação por e-mail
               </Button>
             </form>
+          </CardBody>
+        </Card>
+      )}
+
+      {contratoAtual && (
+        <Card className="mb-5">
+          <CardBody className="flex items-center justify-between text-sm text-white/60">
+            <span>Contrato atual anexado em {formatDateTime(contratoAtual.uploaded_at)}.</span>
+            {contratoAtualUrl && (
+              <a
+                href={contratoAtualUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[var(--blue-400)] hover:underline"
+              >
+                <FileText size={14} />
+                Ver arquivo
+              </a>
+            )}
           </CardBody>
         </Card>
       )}

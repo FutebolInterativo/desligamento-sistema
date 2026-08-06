@@ -21,6 +21,7 @@ import type {
 import { RegistrarPagamentoForm } from "./registrar-pagamento-form";
 
 const TIPO_DOCUMENTO_LABEL: Record<string, string> = {
+  contrato_atual: "Contrato atual",
   minuta_distrato: "Minuta do distrato",
   distrato_assinado: "Distrato assinado",
   nota_fiscal: "Nota fiscal",
