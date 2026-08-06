@@ -171,41 +171,39 @@ export default async function GestorDesligamentoDetalhePage({
                 </div>
               </div>
 
-              {(valores.dias_uteis_mes == null || valores.dias_trabalhados == null) && (
-                <form
-                  action={atualizarDiasAction}
-                  className="flex flex-wrap items-end gap-3 border-t border-white/[0.06] pt-4"
-                >
-                  <input type="hidden" name="desligamento_id" value={desligamento.id} />
-                  <div className="w-40">
-                    <Field label="Dias úteis no mês" hint="Total de dias úteis no mês do desligamento">
-                      <Input
-                        type="number"
-                        name="dias_uteis_mes"
-                        min="1"
-                        max="31"
-                        defaultValue={valores.dias_uteis_mes ?? undefined}
-                        required
-                      />
-                    </Field>
-                  </div>
-                  <div className="w-40">
-                    <Field label="Dias trabalhados no mês" hint="Necessário pra fechar o valor total">
-                      <Input
-                        type="number"
-                        name="dias_trabalhados"
-                        min="1"
-                        max="31"
-                        defaultValue={valores.dias_trabalhados ?? undefined}
-                        required
-                      />
-                    </Field>
-                  </div>
-                  <Button type="submit" size="sm" variant="secondary">
-                    Salvar
-                  </Button>
-                </form>
-              )}
+              <form
+                action={atualizarDiasAction}
+                className="flex flex-wrap items-end gap-3 border-t border-white/[0.06] pt-4"
+              >
+                <input type="hidden" name="desligamento_id" value={desligamento.id} />
+                <div className="w-40">
+                  <Field label="Dias úteis no mês" hint="Total de dias úteis no mês do desligamento">
+                    <Input
+                      type="number"
+                      name="dias_uteis_mes"
+                      min="1"
+                      max="31"
+                      defaultValue={valores.dias_uteis_mes ?? undefined}
+                      required
+                    />
+                  </Field>
+                </div>
+                <div className="w-40">
+                  <Field label="Dias trabalhados no mês" hint="Necessário pra fechar o valor total">
+                    <Input
+                      type="number"
+                      name="dias_trabalhados"
+                      min="1"
+                      max="31"
+                      defaultValue={valores.dias_trabalhados ?? undefined}
+                      required
+                    />
+                  </Field>
+                </div>
+                <Button type="submit" size="sm" variant="secondary">
+                  {valores.dias_uteis_mes != null && valores.dias_trabalhados != null ? "Corrigir" : "Salvar"}
+                </Button>
+              </form>
             </div>
           ) : (
             <p className="text-white/40">Nenhum valor registrado ainda.</p>
