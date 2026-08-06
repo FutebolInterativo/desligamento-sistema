@@ -406,21 +406,51 @@ export default async function DesligamentoDetalhePage({
               <input type="hidden" name="desligamento_id" value={desligamento.id} />
               <div className="space-y-3">
                 <Checkbox
-                  name="materiais_recolhidos"
-                  label="Materiais da empresa recolhidos"
-                  defaultChecked={procedimentos?.materiais_recolhidos}
+                  name="notebook_recolhido"
+                  label="Notebook recolhido"
+                  defaultChecked={procedimentos?.notebook_recolhido}
                   disabled={status !== "procedimentos_em_andamento"}
                 />
                 <Checkbox
-                  name="acessos_bloqueados"
-                  label="Acessos aos sistemas bloqueados/removidos"
-                  defaultChecked={procedimentos?.acessos_bloqueados}
+                  name="celular_recolhido"
+                  label="Celular recolhido"
+                  defaultChecked={procedimentos?.celular_recolhido}
                   disabled={status !== "procedimentos_em_andamento"}
                 />
                 <Checkbox
-                  name="beneficios_cancelados"
-                  label="Plano de saúde e benefícios cancelados"
-                  defaultChecked={procedimentos?.beneficios_cancelados}
+                  name="email_desativado"
+                  label="E-mail desativado"
+                  defaultChecked={procedimentos?.email_desativado}
+                  disabled={status !== "procedimentos_em_andamento"}
+                />
+                <Checkbox
+                  name="slack_removido"
+                  label="Removido do Slack"
+                  defaultChecked={procedimentos?.slack_removido}
+                  disabled={status !== "procedimentos_em_andamento"}
+                />
+                <Checkbox
+                  name="documentos_contrato_arquivados"
+                  label="Documentos do contrato arquivados"
+                  defaultChecked={procedimentos?.documentos_contrato_arquivados}
+                  disabled={status !== "procedimentos_em_andamento"}
+                />
+                <Checkbox
+                  name="wellhub_cancelado"
+                  label="Wellhub cancelado"
+                  defaultChecked={procedimentos?.wellhub_cancelado}
+                  disabled={status !== "procedimentos_em_andamento"}
+                />
+                <Checkbox
+                  name="grupo_avisos_removido"
+                  label="Removido do grupo de avisos por e-mail"
+                  defaultChecked={procedimentos?.grupo_avisos_removido}
+                  disabled={status !== "procedimentos_em_andamento"}
+                />
+                <Checkbox
+                  name="alice_cancelado"
+                  label="Alice cancelado"
+                  defaultChecked={procedimentos?.alice_cancelado}
                   disabled={status !== "procedimentos_em_andamento"}
                 />
                 {status === "procedimentos_em_andamento" && (

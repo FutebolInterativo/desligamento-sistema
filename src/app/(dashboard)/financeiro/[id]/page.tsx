@@ -277,9 +277,14 @@ export default async function FinanceiroDetalhePage({
             <CardTitle>Procedimentos administrativos</CardTitle>
           </CardHeader>
           <CardBody className="space-y-1.5 text-sm text-white/70">
-            <p>Materiais recolhidos: {procedimentos.materiais_recolhidos ? "Sim" : "Não"}</p>
-            <p>Acessos bloqueados: {procedimentos.acessos_bloqueados ? "Sim" : "Não"}</p>
-            <p>Benefícios cancelados: {procedimentos.beneficios_cancelados ? "Sim" : "Não"}</p>
+            <p>Notebook recolhido: {procedimentos.notebook_recolhido ? "Sim" : "Não"}</p>
+            <p>Celular recolhido: {procedimentos.celular_recolhido ? "Sim" : "Não"}</p>
+            <p>E-mail desativado: {procedimentos.email_desativado ? "Sim" : "Não"}</p>
+            <p>Removido do Slack: {procedimentos.slack_removido ? "Sim" : "Não"}</p>
+            <p>Documentos do contrato arquivados: {procedimentos.documentos_contrato_arquivados ? "Sim" : "Não"}</p>
+            <p>Wellhub cancelado: {procedimentos.wellhub_cancelado ? "Sim" : "Não"}</p>
+            <p>Removido do grupo de avisos: {procedimentos.grupo_avisos_removido ? "Sim" : "Não"}</p>
+            <p>Alice cancelado: {procedimentos.alice_cancelado ? "Sim" : "Não"}</p>
           </CardBody>
         </Card>
       )}

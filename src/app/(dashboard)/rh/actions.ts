@@ -378,18 +378,29 @@ export async function atualizarProcedimentosAction(formData: FormData) {
   const supabase = await createClient();
 
   const desligamentoId = String(formData.get("desligamento_id"));
-  const materiais = formData.get("materiais_recolhidos") === "on";
-  const acessos = formData.get("acessos_bloqueados") === "on";
-  const beneficios = formData.get("beneficios_cancelados") === "on";
+  const notebook = formData.get("notebook_recolhido") === "on";
+  const celular = formData.get("celular_recolhido") === "on";
+  const email = formData.get("email_desativado") === "on";
+  const slack = formData.get("slack_removido") === "on";
+  const documentosContrato = formData.get("documentos_contrato_arquivados") === "on";
+  const wellhub = formData.get("wellhub_cancelado") === "on";
+  const grupoAvisos = formData.get("grupo_avisos_removido") === "on";
+  const alice = formData.get("alice_cancelado") === "on";
 
-  const todosConcluidos = materiais && acessos && beneficios;
+  const todosConcluidos =
+    notebook && celular && email && slack && documentosContrato && wellhub && grupoAvisos && alice;
 
   const { error } = await supabase.from("procedimentos").upsert(
     {
       desligamento_id: desligamentoId,
-      materiais_recolhidos: materiais,
-      acessos_bloqueados: acessos,
-      beneficios_cancelados: beneficios,
+      notebook_recolhido: notebook,
+      celular_recolhido: celular,
+      email_desativado: email,
+      slack_removido: slack,
+      documentos_contrato_arquivados: documentosContrato,
+      wellhub_cancelado: wellhub,
+      grupo_avisos_removido: grupoAvisos,
+      alice_cancelado: alice,
       concluido_por: todosConcluidos ? profile.id : null,
       concluido_em: todosConcluidos ? new Date().toISOString() : null,
     },

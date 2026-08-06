@@ -129,6 +129,14 @@ export interface Procedimentos {
   materiais_recolhidos: boolean;
   acessos_bloqueados: boolean;
   beneficios_cancelados: boolean;
+  notebook_recolhido: boolean;
+  celular_recolhido: boolean;
+  email_desativado: boolean;
+  slack_removido: boolean;
+  documentos_contrato_arquivados: boolean;
+  wellhub_cancelado: boolean;
+  grupo_avisos_removido: boolean;
+  alice_cancelado: boolean;
   concluido_por: string | null;
   concluido_em: string | null;
 }
